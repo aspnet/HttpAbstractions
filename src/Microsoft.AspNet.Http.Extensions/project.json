@@ -1,22 +1,22 @@
 {
-    "version": "1.0.0-*",
+    "version": "1.0.0-beta4",
     "description": "ASP.NET 5 common extension methods for HTTP abstractions and IApplicationBuilder.",
     "dependencies": {
-        "Microsoft.AspNet.Http": "1.0.0-*",
-        "Microsoft.AspNet.Http.Interfaces": "1.0.0-*",
-        "Microsoft.Framework.DependencyInjection.Interfaces": "1.0.0-*",
-        "Microsoft.Framework.NotNullAttribute.Internal": { "type": "build", "version": "1.0.0-*" },
-        "Microsoft.Framework.WebEncoders.Core": "1.0.0-*",
-        "Microsoft.Net.Http.Headers": "1.0.0-*"
+        "Microsoft.AspNet.Http": "1.0.0-beta4",
+        "Microsoft.AspNet.Http.Interfaces": "1.0.0-beta4",
+        "Microsoft.Framework.DependencyInjection.Interfaces": "1.0.0-beta4",
+        "Microsoft.Framework.NotNullAttribute.Internal": { "type": "build", "version": "1.0.0-beta4" },
+        "Microsoft.Framework.WebEncoders.Core": "1.0.0-beta4",
+        "Microsoft.Net.Http.Headers": "1.0.0-beta4"
     },
     "frameworks": {
         "dnx451": {
         },
         "dnxcore50": {
             "dependencies": {
-                "System.IO.FileSystem": "4.0.0-beta-*",
-                "System.Reflection.TypeExtensions": "4.0.0-beta-*",
-                "System.Runtime": "4.0.20-beta-*"
+                "System.IO.FileSystem": "4.0.0-beta-22816",
+                "System.Reflection.TypeExtensions": "4.0.0-beta-22816",
+                "System.Runtime": "4.0.20-beta-22816"
             }
         }
     }

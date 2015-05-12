@@ -1,19 +1,19 @@
 {
-    "version": "1.0.0-*",
+    "version": "1.0.0-beta4",
     "dependencies": {
-        "Microsoft.Framework.NotNullAttribute.Internal": { "type": "build", "version": "1.0.0-*" }
+        "Microsoft.Framework.NotNullAttribute.Internal": { "type": "build", "version": "1.0.0-beta4" }
     },
     "frameworks" : {
         "net45" : { },
         "dnx451" : { },
         "dnxcore50" : {
             "dependencies": {
-                "System.Collections": "4.0.10-beta-*",
-                "System.Diagnostics.Contracts": "4.0.0-beta-*",
-                "System.Globalization": "4.0.10-beta-*",
-                "System.Globalization.Extensions": "4.0.0-beta-*",
-                "System.Text.Encoding": "4.0.10-beta-*",
-                "System.Runtime": "4.0.20-beta-*"
+                "System.Collections": "4.0.10-beta-22816",
+                "System.Diagnostics.Contracts": "4.0.0-beta-22816",
+                "System.Globalization": "4.0.10-beta-22816",
+                "System.Globalization.Extensions": "4.0.0-beta-22816",
+                "System.Text.Encoding": "4.0.10-beta-22816",
+                "System.Runtime": "4.0.20-beta-22816"
             }
         }
     }
