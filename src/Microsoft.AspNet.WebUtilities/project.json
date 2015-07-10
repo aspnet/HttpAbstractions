@@ -1,20 +1,20 @@
 {
-    "version": "1.0.0-*",
+    "version": "1.0.0-beta5",
     "description": "ASP.NET 5 common helper methods.",
     "dependencies": {
-        "Microsoft.Framework.NotNullAttribute.Sources": { "type": "build", "version": "1.0.0-*" },
-        "Microsoft.Framework.WebEncoders.Core": "1.0.0-*"
+        "Microsoft.Framework.NotNullAttribute.Sources": { "type": "build", "version": "1.0.0-beta5" },
+        "Microsoft.Framework.WebEncoders.Core": "1.0.0-beta5"
     },
     "frameworks": {
         "dnx451": { },
         "dnxcore50": {
             "dependencies": {
-                "System.Collections": "4.0.10-beta-*",
-                "System.Diagnostics.Debug": "4.0.10-beta-*",
-                "System.IO": "4.0.10-beta-*",
-                "System.IO.FileSystem": "4.0.0-beta-*",
-                "System.Runtime": "4.0.20-beta-*",
-                "System.Runtime.Extensions": "4.0.10-beta-*"
+                "System.Collections": "4.0.10-beta-23019",
+                "System.Diagnostics.Debug": "4.0.10-beta-23019",
+                "System.IO": "4.0.10-beta-23019",
+                "System.IO.FileSystem": "4.0.0-beta-23019",
+                "System.Runtime": "4.0.20-beta-23019",
+                "System.Runtime.Extensions": "4.0.10-beta-23019"
             }
         }
     }
