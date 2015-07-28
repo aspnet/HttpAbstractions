@@ -1,24 +1,27 @@
 {
-    "version": "1.0.0-*",
+    "version": "1.0.0-beta6",
     "dependencies": {
-        "Microsoft.Framework.NotNullAttribute.Sources": { "type": "build", "version": "1.0.0-*" }
+        "Microsoft.Framework.NotNullAttribute.Sources": {
+            "type": "build",
+            "version": "1.0.0-beta6"
+        }
     },
     "repository": {
         "type": "git",
         "url": "git://github.com/aspnet/httpabstractions"
     },
-    "frameworks" : {
-        "net45" : { },
-        "dnx451" : { },
-        "dnxcore50" : {
+    "frameworks": {
+        "net45": {},
+        "dnx451": {},
+        "dnxcore50": {
             "dependencies": {
-                "System.Collections": "4.0.10-beta-*",
-                "System.Diagnostics.Contracts": "4.0.0-beta-*",
-                "System.Globalization": "4.0.10-beta-*",
-                "System.Globalization.Extensions": "4.0.0-beta-*",
-                "System.Linq": "4.0.0-beta-*",
-                "System.Text.Encoding": "4.0.10-beta-*",
-                "System.Runtime": "4.0.20-beta-*"
+                "System.Collections": "4.0.10-beta-23109",
+                "System.Diagnostics.Contracts": "4.0.0-beta-23109",
+                "System.Globalization": "4.0.10-beta-23109",
+                "System.Globalization.Extensions": "4.0.0-beta-23109",
+                "System.Linq": "4.0.0-beta-23109",
+                "System.Text.Encoding": "4.0.10-beta-23109",
+                "System.Runtime": "4.0.20-beta-23109"
             }
         }
     }

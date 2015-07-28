@@ -1,23 +1,26 @@
-﻿{
-    "version": "1.0.0-*",
+{
+    "version": "1.0.0-beta6",
     "description": "ASP.NET 5 HTTP feature implementations.",
     "repository": {
         "type": "git",
         "url": "git://github.com/aspnet/httpabstractions"
     },
     "dependencies": {
-        "Microsoft.AspNet.FeatureModel": "1.0.0-*",
-        "Microsoft.AspNet.Http.Abstractions": "1.0.0-*",
-        "Microsoft.AspNet.WebUtilities": "1.0.0-*",
-        "Microsoft.Framework.NotNullAttribute.Sources": { "type": "build", "version": "1.0.0-*" },
-        "Microsoft.Net.Http.Headers": "1.0.0-*"
+        "Microsoft.AspNet.FeatureModel": "1.0.0-beta6",
+        "Microsoft.AspNet.Http.Abstractions": "1.0.0-beta6",
+        "Microsoft.AspNet.WebUtilities": "1.0.0-beta6",
+        "Microsoft.Framework.NotNullAttribute.Sources": {
+            "type": "build",
+            "version": "1.0.0-beta6"
+        },
+        "Microsoft.Net.Http.Headers": "1.0.0-beta6"
     },
     "frameworks": {
-        "dnx451": { },
+        "dnx451": {},
         "dnxcore50": {
             "dependencies": {
-                "System.Diagnostics.Debug": "4.0.10-beta-*",
-                "System.Text.Encoding": "4.0.10-beta-*"
+                "System.Diagnostics.Debug": "4.0.10-beta-23109",
+                "System.Text.Encoding": "4.0.10-beta-23109"
             }
         }
     }
