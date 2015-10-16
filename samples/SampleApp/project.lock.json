@@ -1,0 +1,293 @@
+{
+  "locked": true,
+  "version": 2,
+  "targets": {
+    "DNX,Version=v4.5.1": {
+      "Microsoft.AspNet.Http/1.0.0-beta8": {
+        "type": "project",
+        "framework": "DNX,Version=v4.5.1",
+        "dependencies": {
+          "Microsoft.AspNet.Http.Abstractions": "1.0.0-beta8",
+          "Microsoft.AspNet.WebUtilities": "1.0.0-beta8",
+          "Microsoft.Net.Http.Headers": "1.0.0-beta8"
+        }
+      },
+      "Microsoft.AspNet.Http.Abstractions/1.0.0-beta8": {
+        "type": "project",
+        "framework": "DNX,Version=v4.5.1",
+        "dependencies": {
+          "Microsoft.AspNet.Http.Features": "1.0.0-beta8",
+          "Microsoft.Framework.ActivatorUtilities.Sources": "1.0.0-beta8",
+          "Microsoft.Framework.WebEncoders.Core": "1.0.0-beta8"
+        }
+      },
+      "Microsoft.AspNet.Http.Features/1.0.0-beta8": {
+        "type": "project",
+        "framework": "DNX,Version=v4.5.1",
+        "dependencies": {
+          "Microsoft.Framework.Primitives": "1.0.0-beta8"
+        }
+      },
+      "Microsoft.AspNet.WebUtilities/1.0.0-beta8": {
+        "type": "project",
+        "framework": "DNX,Version=v4.5.1",
+        "dependencies": {
+          "Microsoft.Framework.Primitives": "1.0.0-beta8",
+          "Microsoft.Framework.WebEncoders.Core": "1.0.0-beta8"
+        }
+      },
+      "Microsoft.Framework.ActivatorUtilities.Sources/1.0.0-beta8": {
+        "type": "package",
+        "frameworkAssemblies": [
+          "Microsoft.CSharp",
+          "mscorlib",
+          "System",
+          "System.Core"
+        ],
+        "compile": {
+          "lib/dnx451/Microsoft.Framework.ActivatorUtilities.Sources.dll": {}
+        },
+        "runtime": {
+          "lib/dnx451/Microsoft.Framework.ActivatorUtilities.Sources.dll": {}
+        }
+      },
+      "Microsoft.Framework.Primitives/1.0.0-beta8": {
+        "type": "package",
+        "frameworkAssemblies": [
+          "Microsoft.CSharp",
+          "mscorlib",
+          "System",
+          "System.Core"
+        ],
+        "compile": {
+          "lib/dnx451/Microsoft.Framework.Primitives.dll": {}
+        },
+        "runtime": {
+          "lib/dnx451/Microsoft.Framework.Primitives.dll": {}
+        }
+      },
+      "Microsoft.Framework.WebEncoders.Core/1.0.0-beta8": {
+        "type": "project",
+        "framework": "DNX,Version=v4.5.1"
+      },
+      "Microsoft.Net.Http.Headers/1.0.0-beta8": {
+        "type": "project",
+        "framework": "DNX,Version=v4.5.1"
+      }
+    },
+    "DNX,Version=v4.5.1/win7-x86": {
+      "Microsoft.AspNet.Http/1.0.0-beta8": {
+        "type": "project",
+        "framework": "DNX,Version=v4.5.1",
+        "dependencies": {
+          "Microsoft.AspNet.Http.Abstractions": "1.0.0-beta8",
+          "Microsoft.AspNet.WebUtilities": "1.0.0-beta8",
+          "Microsoft.Net.Http.Headers": "1.0.0-beta8"
+        }
+      },
+      "Microsoft.AspNet.Http.Abstractions/1.0.0-beta8": {
+        "type": "project",
+        "framework": "DNX,Version=v4.5.1",
+        "dependencies": {
+          "Microsoft.AspNet.Http.Features": "1.0.0-beta8",
+          "Microsoft.Framework.ActivatorUtilities.Sources": "1.0.0-beta8",
+          "Microsoft.Framework.WebEncoders.Core": "1.0.0-beta8"
+        }
+      },
+      "Microsoft.AspNet.Http.Features/1.0.0-beta8": {
+        "type": "project",
+        "framework": "DNX,Version=v4.5.1",
+        "dependencies": {
+          "Microsoft.Framework.Primitives": "1.0.0-beta8"
+        }
+      },
+      "Microsoft.AspNet.WebUtilities/1.0.0-beta8": {
+        "type": "project",
+        "framework": "DNX,Version=v4.5.1",
+        "dependencies": {
+          "Microsoft.Framework.Primitives": "1.0.0-beta8",
+          "Microsoft.Framework.WebEncoders.Core": "1.0.0-beta8"
+        }
+      },
+      "Microsoft.Framework.ActivatorUtilities.Sources/1.0.0-beta8": {
+        "type": "package",
+        "frameworkAssemblies": [
+          "Microsoft.CSharp",
+          "mscorlib",
+          "System",
+          "System.Core"
+        ],
+        "compile": {
+          "lib/dnx451/Microsoft.Framework.ActivatorUtilities.Sources.dll": {}
+        },
+        "runtime": {
+          "lib/dnx451/Microsoft.Framework.ActivatorUtilities.Sources.dll": {}
+        }
+      },
+      "Microsoft.Framework.Primitives/1.0.0-beta8": {
+        "type": "package",
+        "frameworkAssemblies": [
+          "Microsoft.CSharp",
+          "mscorlib",
+          "System",
+          "System.Core"
+        ],
+        "compile": {
+          "lib/dnx451/Microsoft.Framework.Primitives.dll": {}
+        },
+        "runtime": {
+          "lib/dnx451/Microsoft.Framework.Primitives.dll": {}
+        }
+      },
+      "Microsoft.Framework.WebEncoders.Core/1.0.0-beta8": {
+        "type": "project",
+        "framework": "DNX,Version=v4.5.1"
+      },
+      "Microsoft.Net.Http.Headers/1.0.0-beta8": {
+        "type": "project",
+        "framework": "DNX,Version=v4.5.1"
+      }
+    },
+    "DNX,Version=v4.5.1/win7-x64": {
+      "Microsoft.AspNet.Http/1.0.0-beta8": {
+        "type": "project",
+        "framework": "DNX,Version=v4.5.1",
+        "dependencies": {
+          "Microsoft.AspNet.Http.Abstractions": "1.0.0-beta8",
+          "Microsoft.AspNet.WebUtilities": "1.0.0-beta8",
+          "Microsoft.Net.Http.Headers": "1.0.0-beta8"
+        }
+      },
+      "Microsoft.AspNet.Http.Abstractions/1.0.0-beta8": {
+        "type": "project",
+        "framework": "DNX,Version=v4.5.1",
+        "dependencies": {
+          "Microsoft.AspNet.Http.Features": "1.0.0-beta8",
+          "Microsoft.Framework.ActivatorUtilities.Sources": "1.0.0-beta8",
+          "Microsoft.Framework.WebEncoders.Core": "1.0.0-beta8"
+        }
+      },
+      "Microsoft.AspNet.Http.Features/1.0.0-beta8": {
+        "type": "project",
+        "framework": "DNX,Version=v4.5.1",
+        "dependencies": {
+          "Microsoft.Framework.Primitives": "1.0.0-beta8"
+        }
+      },
+      "Microsoft.AspNet.WebUtilities/1.0.0-beta8": {
+        "type": "project",
+        "framework": "DNX,Version=v4.5.1",
+        "dependencies": {
+          "Microsoft.Framework.Primitives": "1.0.0-beta8",
+          "Microsoft.Framework.WebEncoders.Core": "1.0.0-beta8"
+        }
+      },
+      "Microsoft.Framework.ActivatorUtilities.Sources/1.0.0-beta8": {
+        "type": "package",
+        "frameworkAssemblies": [
+          "Microsoft.CSharp",
+          "mscorlib",
+          "System",
+          "System.Core"
+        ],
+        "compile": {
+          "lib/dnx451/Microsoft.Framework.ActivatorUtilities.Sources.dll": {}
+        },
+        "runtime": {
+          "lib/dnx451/Microsoft.Framework.ActivatorUtilities.Sources.dll": {}
+        }
+      },
+      "Microsoft.Framework.Primitives/1.0.0-beta8": {
+        "type": "package",
+        "frameworkAssemblies": [
+          "Microsoft.CSharp",
+          "mscorlib",
+          "System",
+          "System.Core"
+        ],
+        "compile": {
+          "lib/dnx451/Microsoft.Framework.Primitives.dll": {}
+        },
+        "runtime": {
+          "lib/dnx451/Microsoft.Framework.Primitives.dll": {}
+        }
+      },
+      "Microsoft.Framework.WebEncoders.Core/1.0.0-beta8": {
+        "type": "project",
+        "framework": "DNX,Version=v4.5.1"
+      },
+      "Microsoft.Net.Http.Headers/1.0.0-beta8": {
+        "type": "project",
+        "framework": "DNX,Version=v4.5.1"
+      }
+    }
+  },
+  "libraries": {
+    "Microsoft.AspNet.Http/1.0.0-beta8": {
+      "type": "project",
+      "path": "../../src/Microsoft.AspNet.Http/project.json"
+    },
+    "Microsoft.AspNet.Http.Abstractions/1.0.0-beta8": {
+      "type": "project",
+      "path": "../../src/Microsoft.AspNet.Http.Abstractions/project.json"
+    },
+    "Microsoft.AspNet.Http.Features/1.0.0-beta8": {
+      "type": "project",
+      "path": "../../src/Microsoft.AspNet.Http.Features/project.json"
+    },
+    "Microsoft.AspNet.WebUtilities/1.0.0-beta8": {
+      "type": "project",
+      "path": "../../src/Microsoft.AspNet.WebUtilities/project.json"
+    },
+    "Microsoft.Framework.WebEncoders.Core/1.0.0-beta8": {
+      "type": "project",
+      "path": "../../src/Microsoft.Framework.WebEncoders.Core/project.json"
+    },
+    "Microsoft.Net.Http.Headers/1.0.0-beta8": {
+      "type": "project",
+      "path": "../../src/Microsoft.Net.Http.Headers/project.json"
+    },
+    "Microsoft.Framework.ActivatorUtilities.Sources/1.0.0-beta8": {
+      "type": "package",
+      "sha512": "ZeJe6DEOYr0B54yi0hmi/mwe+XB9QMkReV2RqT80lCZWwsE+EXcLF6zyhg/m6SVCwbQ+PuLzpMfS64DLym3BEA==",
+      "files": [
+        "lib/dnx451/Microsoft.Framework.ActivatorUtilities.Sources.dll",
+        "lib/dnx451/Microsoft.Framework.ActivatorUtilities.Sources.xml",
+        "lib/dnxcore50/Microsoft.Framework.ActivatorUtilities.Sources.dll",
+        "lib/dnxcore50/Microsoft.Framework.ActivatorUtilities.Sources.xml",
+        "lib/dotnet/Microsoft.Framework.ActivatorUtilities.Sources.dll",
+        "lib/dotnet/Microsoft.Framework.ActivatorUtilities.Sources.xml",
+        "lib/net45/Microsoft.Framework.ActivatorUtilities.Sources.dll",
+        "lib/net45/Microsoft.Framework.ActivatorUtilities.Sources.xml",
+        "Microsoft.Framework.ActivatorUtilities.Sources.1.0.0-beta8.nupkg",
+        "Microsoft.Framework.ActivatorUtilities.Sources.1.0.0-beta8.nupkg.sha512",
+        "Microsoft.Framework.ActivatorUtilities.Sources.nuspec",
+        "shared/ActivatorUtilities.cs"
+      ]
+    },
+    "Microsoft.Framework.Primitives/1.0.0-beta8": {
+      "type": "package",
+      "serviceable": true,
+      "sha512": "tCmbjiE+AgwTfikByvv0xEsnA/z5SOAecZT6gb7EbjuanlzzCUyqTSnvi5SRLGBQsTNKjLiQFFlVOeWHZPOcDg==",
+      "files": [
+        "lib/dnx451/Microsoft.Framework.Primitives.dll",
+        "lib/dnx451/Microsoft.Framework.Primitives.xml",
+        "lib/dnxcore50/Microsoft.Framework.Primitives.dll",
+        "lib/dnxcore50/Microsoft.Framework.Primitives.xml",
+        "lib/dotnet/Microsoft.Framework.Primitives.dll",
+        "lib/dotnet/Microsoft.Framework.Primitives.xml",
+        "lib/net45/Microsoft.Framework.Primitives.dll",
+        "lib/net45/Microsoft.Framework.Primitives.xml",
+        "Microsoft.Framework.Primitives.1.0.0-beta8.nupkg",
+        "Microsoft.Framework.Primitives.1.0.0-beta8.nupkg.sha512",
+        "Microsoft.Framework.Primitives.nuspec"
+      ]
+    }
+  },
+  "projectFileDependencyGroups": {
+    "": [
+      "Microsoft.AspNet.Http >= 1.0.0-beta8"
+    ],
+    "DNX,Version=v4.5.1": []
+  }
+}

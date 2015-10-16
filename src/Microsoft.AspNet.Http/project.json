@@ -1,5 +1,5 @@
 {
-    "version": "1.0.0-*",
+    "version": "1.0.0-beta8",
     "description": "ASP.NET 5 HTTP feature implementations.",
     "repository": {
         "type": "git",
@@ -9,16 +9,16 @@
         "warningsAsErrors": true
     },
     "dependencies": {
-        "Microsoft.AspNet.Http.Abstractions": "1.0.0-*",
-        "Microsoft.AspNet.WebUtilities": "1.0.0-*",
-        "Microsoft.Net.Http.Headers": "1.0.0-*"
+        "Microsoft.AspNet.Http.Abstractions": "1.0.0-beta8",
+        "Microsoft.AspNet.WebUtilities": "1.0.0-beta8",
+        "Microsoft.Net.Http.Headers": "1.0.0-beta8"
     },
     "frameworks": {
-        "dnx451": { },
+        "dnx451": {},
         "dnxcore50": {
             "dependencies": {
-                "System.Diagnostics.Debug": "4.0.11-beta-*",
-                "System.Text.Encoding": "4.0.11-beta-*"
+                "System.Diagnostics.Debug": "4.0.11-beta-23409",
+                "System.Text.Encoding": "4.0.11-beta-23409"
             }
         }
     }
