@@ -1,5 +1,5 @@
 {
-  "version": "1.0.0-*",
+  "version": "1.0.0-rc1-final",
   "description": "ASP.NET 5 HTTP header implementations.",
   "repository": {
     "type": "git",
@@ -13,13 +13,13 @@
     "net451": {},
     "dotnet5.4": {
       "dependencies": {
-        "System.Collections": "4.0.11-beta-*",
-        "System.Diagnostics.Contracts": "4.0.1-beta-*",
-        "System.Globalization": "4.0.11-beta-*",
-        "System.Globalization.Extensions": "4.0.1-beta-*",
-        "System.Linq": "4.0.1-beta-*",
-        "System.Text.Encoding": "4.0.11-beta-*",
-        "System.Runtime": "4.0.21-beta-*"
+        "System.Collections": "4.0.11-beta-23516",
+        "System.Diagnostics.Contracts": "4.0.1-beta-23516",
+        "System.Globalization": "4.0.11-beta-23516",
+        "System.Globalization.Extensions": "4.0.1-beta-23516",
+        "System.Linq": "4.0.1-beta-23516",
+        "System.Text.Encoding": "4.0.11-beta-23516",
+        "System.Runtime": "4.0.21-beta-23516"
       }
     }
   }
