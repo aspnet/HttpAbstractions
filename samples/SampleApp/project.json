@@ -1,7 +1,7 @@
 {
   "version": "1.0.0-*",
   "dependencies": {
-    "Microsoft.AspNetCore.Http": "1.0.0-*"
+    "Microsoft.AspNetCore.Http": "1.0.0-rc2-final"
   },
   "commands": {
     "SampleApp": "SampleApp"
