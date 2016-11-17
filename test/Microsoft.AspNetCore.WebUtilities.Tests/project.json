@@ -12,7 +12,7 @@
     "netcoreapp1.0": {
       "dependencies": {
         "Microsoft.NETCore.App": {
-          "version": "1.0.3-*",
+          "version": "1.0.3",
           "type": "platform"
         },
         "System.Text.Encoding.Extensions": "4.0.11",
