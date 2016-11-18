@@ -1,5 +1,5 @@
 {
-  "version": "1.1.0-*",
+  "version": "1.1.0",
   "description": "ASP.NET Core HTTP feature interface definitions.",
   "packOptions": {
     "repository": {
@@ -19,17 +19,17 @@
     "xmlDoc": true
   },
   "dependencies": {
-    "Microsoft.Extensions.Primitives": "1.1.0-*",
-    "NETStandard.Library": "1.6.1-*"
+    "Microsoft.Extensions.Primitives": "1.1.0",
+    "NETStandard.Library": "1.6.1"
   },
   "frameworks": {
     "net451": {},
     "netstandard1.3": {
       "dependencies": {
-        "System.ComponentModel": "4.3.0-*",
-        "System.Net.WebSockets": "4.3.0-*",
-        "System.Security.Claims": "4.3.0-*",
-        "System.Security.Principal": "4.3.0-*"
+        "System.ComponentModel": "4.3.0",
+        "System.Net.WebSockets": "4.3.0",
+        "System.Security.Claims": "4.3.0",
+        "System.Security.Principal": "4.3.0"
       }
     }
   }
