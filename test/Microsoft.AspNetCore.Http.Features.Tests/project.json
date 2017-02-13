@@ -1,14 +1,14 @@
 {
   "dependencies": {
     "dotnet-test-xunit": "1.0.0-rc3-000000-01",
-    "Microsoft.AspNetCore.Http.Features": "1.0.1",
+    "Microsoft.AspNetCore.Http.Features": "1.0.2",
     "xunit": "2.1.0"
   },
   "frameworks": {
     "netcoreapp1.0": {
       "dependencies": {
         "Microsoft.NETCore.App": {
-          "version": "1.0.3",
+          "version": "1.0.4",
           "type": "platform"
         },
         "System.Diagnostics.Process": "4.1.0"
