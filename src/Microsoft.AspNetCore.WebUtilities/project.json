@@ -30,7 +30,7 @@
     "Microsoft.Net.Http.Headers": "1.1.2",
     "NETStandard.Library": "1.6.1",
     "System.Buffers": "4.3.0",
-    "System.Text.Encodings.Web": "4.3.0"
+    "System.Text.Encodings.Web": "4.3.1"
   },
   "frameworks": {
     "net451": {
