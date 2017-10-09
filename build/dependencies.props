@@ -1,14 +1,21 @@
 ﻿<Project>
   <PropertyGroup>
-    <AspNetCoreVersion>2.0.0</AspNetCoreVersion>
-    <CoreFxVersion>4.4.0</CoreFxVersion>
-    <InternalAspNetCoreSdkVersion>2.0.1-rtm-15400</InternalAspNetCoreSdkVersion>
-    <NETStandardImplicitPackageVersion>2.0.0</NETStandardImplicitPackageVersion>
-    <NETStandardLibraryNETFrameworkVersion>2.0.0</NETStandardLibraryNETFrameworkVersion>
-    <RuntimeFrameworkVersion Condition="'$(TargetFramework)'=='netcoreapp2.0'">2.0.0</RuntimeFrameworkVersion>
-    <TestSdkVersion>15.3.0</TestSdkVersion>
-    <XunitVersion>2.3.0-beta2-build3683</XunitVersion>
-    <XunitRunnerVisualStudioVersion>2.3.0-beta2-build1317</XunitRunnerVisualStudioVersion>
+    <InternalAspNetCoreSdkPackageVersion>2.0.2-beta-15522</InternalAspNetCoreSdkPackageVersion>
+    <MicrosoftAspNetCoreTestingPackageVersion>2.0.0</MicrosoftAspNetCoreTestingPackageVersion>
+    <MicrosoftExtensionsActivatorUtilitiesSourcesPackageVersion>2.0.0</MicrosoftExtensionsActivatorUtilitiesSourcesPackageVersion>
+    <MicrosoftExtensionsCopyOnWriteDictionarySourcesPackageVersion>2.0.0</MicrosoftExtensionsCopyOnWriteDictionarySourcesPackageVersion>
+    <MicrosoftExtensionsDependencyInjectionPackageVersion>2.0.0</MicrosoftExtensionsDependencyInjectionPackageVersion>
+    <MicrosoftExtensionsFileProvidersAbstractionsPackageVersion>2.0.0</MicrosoftExtensionsFileProvidersAbstractionsPackageVersion>
+    <MicrosoftExtensionsLoggingAbstractionsPackageVersion>2.0.0</MicrosoftExtensionsLoggingAbstractionsPackageVersion>
+    <MicrosoftExtensionsObjectPoolPackageVersion>2.0.0</MicrosoftExtensionsObjectPoolPackageVersion>
+    <MicrosoftExtensionsOptionsPackageVersion>2.0.0</MicrosoftExtensionsOptionsPackageVersion>
+    <MicrosoftExtensionsPrimitivesPackageVersion>2.0.0</MicrosoftExtensionsPrimitivesPackageVersion>
+    <MicrosoftExtensionsWebEncodersSourcesPackageVersion>2.0.0</MicrosoftExtensionsWebEncodersSourcesPackageVersion>
+    <MicrosoftNETTestSdkPackageVersion>15.3.0</MicrosoftNETTestSdkPackageVersion>
+    <SystemBuffersPackageVersion>4.4.0</SystemBuffersPackageVersion>
+    <SystemTextEncodingsWebPackageVersion>4.4.0</SystemTextEncodingsWebPackageVersion>
+    <XunitPackageVersion>2.3.0-beta2-build3683</XunitPackageVersion>
+    <XunitRunnerVisualStudioPackageVersion>2.3.0-beta2-build1317</XunitRunnerVisualStudioPackageVersion>
   </PropertyGroup>
 
   <Import Project="$(DotNetPackageVersionPropsPath)" Condition=" '$(DotNetPackageVersionPropsPath)' != '' " />
