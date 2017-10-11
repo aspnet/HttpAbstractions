@@ -1,15 +1,15 @@
 {
   "version": "1.0.0-*",
   "dependencies": {
-    "Microsoft.AspNetCore.Http": "1.0.3",
-    "Microsoft.AspNetCore.Http.Extensions": "1.0.3"
+    "Microsoft.AspNetCore.Http": "1.0.4",
+    "Microsoft.AspNetCore.Http.Extensions": "1.0.4"
   },
   "frameworks": {
     "net451": {},
     "netcoreapp1.0": {
       "dependencies": {
         "Microsoft.NETCore.App": {
-          "version": "1.0.7",
+          "version": "1.0.8-servicing-005009-00",
           "type": "platform"
         }
       }

@@ -1,5 +1,5 @@
 {
-  "version": "1.0.3",
+  "version": "1.0.4",
   "description": "ASP.NET Core HTTP feature interface definitions.",
   "packOptions": {
     "repository": {
@@ -32,7 +32,7 @@
         "System.Net.WebSockets": "4.0.0",
         "System.Runtime.Extensions": "4.1.0",
         "System.Security.Claims": "4.0.1",
-        "System.Security.Cryptography.X509Certificates": "4.1.1",
+        "System.Security.Cryptography.X509Certificates": "4.1.2-servicing-25807-02",
         "System.Security.Principal": "4.0.1"
       }
     }
