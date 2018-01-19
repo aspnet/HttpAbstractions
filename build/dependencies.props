@@ -11,7 +11,9 @@
     <MicrosoftExtensionsOptionsPackageVersion>2.0.0</MicrosoftExtensionsOptionsPackageVersion>
     <MicrosoftExtensionsPrimitivesPackageVersion>2.0.0</MicrosoftExtensionsPrimitivesPackageVersion>
     <MicrosoftExtensionsWebEncodersSourcesPackageVersion>2.0.0</MicrosoftExtensionsWebEncodersSourcesPackageVersion>
+    <MicrosoftNETCoreApp20PackageVersion>2.0.5</MicrosoftNETCoreApp20PackageVersion>
     <MicrosoftNETTestSdkPackageVersion>15.3.0</MicrosoftNETTestSdkPackageVersion>
+    <NETStandardLibrary20PackageVersion>2.0.1</NETStandardLibrary20PackageVersion>
     <SystemBuffersPackageVersion>4.4.0</SystemBuffersPackageVersion>
     <SystemTextEncodingsWebPackageVersion>4.4.0</SystemTextEncodingsWebPackageVersion>
     <XunitPackageVersion>2.3.0-beta2-build3683</XunitPackageVersion>
