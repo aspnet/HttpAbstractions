@@ -12,6 +12,12 @@ namespace Microsoft.AspNetCore.Http
     public class StreamWriterAdapter : Stream
     {
         private PipeWriter _pipeWriter;
+
+        public StreamWriterAdapter(PipeWriter pipeWriter)
+        {
+            _pipeWriter = pipeWriter;
+        }
+
         public override bool CanSeek => false;
         public override bool CanRead => false;
         public override bool CanWrite => true;

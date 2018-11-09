@@ -52,7 +52,6 @@ namespace Microsoft.AspNetCore.Http
             return ReadAsync(buffer, offset, count).GetAwaiter().GetResult();
         }
 
-
         public override IAsyncResult BeginRead(byte[] buffer, int offset, int count, AsyncCallback callback, object state)
         {
             var task = ReadAsync(buffer, offset, count, default(CancellationToken), state);
@@ -92,7 +91,6 @@ namespace Microsoft.AspNetCore.Http
         }
         public override Task<int> ReadAsync(byte[] buffer, int offset, int count, CancellationToken cancellationToken)
         {
-
             return ReadAsyncInternal(new Memory<byte>(buffer, offset, count), cancellationToken).AsTask();
         }
 
