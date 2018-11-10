@@ -244,10 +244,23 @@ namespace Microsoft.AspNetCore.Http
             }
 
             // Whatever is between the commitHead and writingHead should be written
-            var data = ToArray();
             try
             {
-                await _writingStream.WriteAsync(data, 0, data.Length, token);
+                //var data = ToArray();
+                if (_completedSegments != null)
+                {
+                    var count = _completedSegments.Count;
+                    for (var i = 0; i < count; i++)
+                    {
+                        var segment = _completedSegments[i];
+                        await _writingStream.WriteAsync(segment.Buffer, 0, segment.Length, token);
+                    }
+                }
+               
+                if (_currentSegment != null)
+                {
+                    await _writingStream.WriteAsync(_currentSegment, 0, _position, token);
+                }
                 await _writingStream.FlushAsync(token);
             }
             catch (Exception)

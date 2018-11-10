@@ -23,7 +23,7 @@ namespace Microsoft.AspNetCore.Http.Tests
         {
             _pool = new TestMemoryPool();
             MemoryStream = new MemoryStream();
-            Pipe = new TestAdaptedPipe(new PipeReaderAdapter(MemoryStream), new PipeWriterAdapter(MemoryStream));
+            Pipe = new TestAdaptedPipe(new PipeReaderAdapter(MemoryStream), new PipeWriterAdapterWithListBacking(MemoryStream));
         }
 
         public void Dispose()

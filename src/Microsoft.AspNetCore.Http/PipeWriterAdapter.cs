@@ -212,10 +212,12 @@ namespace Microsoft.AspNetCore.Http
 
             // Whatever is between the commitHead and writingHead should be written
             var ros = new ReadOnlySequence<byte>(_commitHead, _commitHeadIndex, _writingHead, _writingHead.End);
-            var data = ros.ToArray();
             try
             {
-                await _writingStream.WriteAsync(data, 0, data.Length, token);
+                foreach (var memory in ros)
+                {
+                    await _writingStream.WriteAsync(memory.ToArray(), 0, memory.Length, token);
+                }
                 await _writingStream.FlushAsync(token);
             }
             catch (Exception)
