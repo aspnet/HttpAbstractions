@@ -135,12 +135,16 @@ namespace Microsoft.AspNetCore.Http
             // to allow CancelPendingFlush to cancel writes and flushes
             if (_currentFlushCanceled)
             {
+                // If CancelPendingFlush was already called, we need to return a FlushResult with
+                // Canceled. At this point, we create a fresh CTS that isn't canceled.
                 var result = new FlushResult(isCanceled: true, IsCompletedOrThrow());
                 InternalTokenSource = new CancellationTokenSource();
                 _currentFlushCanceled = false;
                 return result;
             }
 
+            // As an optimization, we only create a new CTS if the previous one wasn't canceled.
+            // Otherwise, we would need to create a new CTS for every call to FlushAsync.
             var joinedToken = CancellationTokenSource.CreateLinkedTokenSource(
                 cancellationToken,
                 InternalTokenSource.Token).Token;
