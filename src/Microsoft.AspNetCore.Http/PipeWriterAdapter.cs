@@ -16,7 +16,7 @@ namespace Microsoft.AspNetCore.Http
     /// <summary>
     /// Implements PipeWriter using a base stream implementation. 
     /// </summary>
-    public class PipeWriterAdapter : PipeWriter
+    public class PipeWriterAdapter : PipeWriter, IDisposable
     {
         private readonly int _minimumSegmentSize;
         private readonly Stream _writingStream;
@@ -25,9 +25,24 @@ namespace Microsoft.AspNetCore.Http
         private List<CompletedBuffer> _completedSegments;
         private byte[] _currentSegment;
         private int _position;
+
         private CancellationTokenSource _internalTokenSource;
         private bool _isCompleted;
+        private bool _currentFlushCanceled;
         private ExceptionDispatchInfo _exceptionInfo;
+
+        private CancellationTokenSource InternalTokenSource
+        {
+            get
+            {
+                if (_internalTokenSource == null)
+                {
+                    _internalTokenSource = new CancellationTokenSource();
+                }
+                return _internalTokenSource;
+            }
+            set { _internalTokenSource = value; }
+        }
 
         public PipeWriterAdapter(Stream writingStream) : this(writingStream, 4096)
         {
@@ -77,7 +92,8 @@ namespace Microsoft.AspNetCore.Http
         /// <inheritdoc />
         public override void CancelPendingFlush()
         {
-            _internalTokenSource.Cancel();
+            _currentFlushCanceled = true;
+            InternalTokenSource?.Cancel();
         }
 
         /// <inheritdoc />
@@ -117,11 +133,17 @@ namespace Microsoft.AspNetCore.Http
 
             // Wrap the provided cancellationToken with an internal one
             // to allow CancelPendingFlush to cancel writes and flushes
-            _internalTokenSource = new CancellationTokenSource();
+            if (_currentFlushCanceled)
+            {
+                var result = new FlushResult(isCanceled: true, IsCompletedOrThrow());
+                InternalTokenSource = new CancellationTokenSource();
+                _currentFlushCanceled = false;
+                return result;
+            }
 
             var joinedToken = CancellationTokenSource.CreateLinkedTokenSource(
-                cancellationToken, 
-                _internalTokenSource.Token).Token;
+                cancellationToken,
+                InternalTokenSource.Token).Token;
 
             try
             {
@@ -152,8 +174,6 @@ namespace Microsoft.AspNetCore.Http
 
             // After writing to the stream, we can return all ArrayPool segments that are completed.
             ReturnCompletedBuffers();
-
-            _internalTokenSource.Dispose();
 
             return new FlushResult(isCanceled: false, IsCompletedOrThrow());
         }
@@ -231,6 +251,11 @@ namespace Microsoft.AspNetCore.Http
             }
 
             _bytesWritten = 0;
+        }
+
+        public void Dispose()
+        {
+            _internalTokenSource?.Dispose();
         }
 
         /// <summary>

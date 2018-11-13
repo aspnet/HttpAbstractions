@@ -9,6 +9,8 @@ namespace Microsoft.AspNetCore.Http.Tests
 {
     public abstract class PipeTest : IDisposable
     {
+        protected const int MaximumSizeHigh = 65;
+
         protected TestAdaptedPipe Pipe;
 
         public MemoryStream MemoryStream { get; set; }

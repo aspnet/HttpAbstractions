@@ -7,6 +7,8 @@ using System.Collections.Generic;
 using System.IO;
 using System.IO.Pipelines;
 using System.Linq;
+using System.Text;
+using System.Threading;
 using System.Threading.Tasks;
 using Xunit;
 
@@ -172,6 +174,45 @@ namespace Microsoft.AspNetCore.Http.Tests
             Assert.Equal("No writing operation. Make sure GetMemory() was called.", exception.Message);
         }
 
+        [Fact]
+        public async Task ThrowsOnCompleteAndWrite()
+        {
+            PipeWriter buffer = Pipe.Writer;
+            buffer.Complete(new InvalidOperationException("Whoops"));
+            var exception = await Assert.ThrowsAsync<InvalidOperationException>(async () => await buffer.FlushAsync());
+
+            Assert.Equal("Whoops", exception.Message);
+        }
+
+        [Fact]
+        public async Task WriteCanBeCancelledViaProvidedCancellationToken()
+        {
+            var pipeWriter = new PipeWriterAdapter(new HangingStream());
+            var cts = new CancellationTokenSource(1);
+            var flushResult = await pipeWriter.WriteAsync(Encoding.ASCII.GetBytes("data"), cts.Token);
+            Assert.True(flushResult.IsCanceled);
+        }
+
+        [Fact]
+        public async Task WriteCanBeCancelledViaCancelPendingFlush()
+        {
+            var pipeWriter = new PipeWriterAdapter(new HangingStream());
+            FlushResult flushResult = new FlushResult();
+
+            var task = new Task(async () =>
+            {
+                flushResult = await pipeWriter.WriteAsync(Encoding.ASCII.GetBytes("data"));
+            });
+
+            task.Start();
+
+            pipeWriter.CancelPendingFlush();
+
+            await task;
+
+            Assert.True(flushResult.IsCanceled);
+        }
+
         private byte[] Read()
         {
             Pipe.Writer.FlushAsync().GetAwaiter().GetResult();
@@ -179,6 +220,60 @@ namespace Microsoft.AspNetCore.Http.Tests
             var buffer = new byte[MemoryStream.Length];
             var result = MemoryStream.Read(buffer, 0, (int)MemoryStream.Length);
             return buffer;
+        }
+    }
+
+    internal class HangingStream : Stream
+    {
+        public override bool CanRead => throw new NotImplementedException();
+
+        public override bool CanSeek => throw new NotImplementedException();
+
+        public override bool CanWrite => true;
+
+        public override long Length => throw new NotImplementedException();
+
+        public override long Position { get => throw new NotImplementedException(); set => throw new NotImplementedException(); }
+
+        public override void Flush()
+        {
+            throw new NotImplementedException();
+        }
+
+        public override int Read(byte[] buffer, int offset, int count)
+        {
+            throw new NotImplementedException();
+        }
+
+        public override long Seek(long offset, SeekOrigin origin)
+        {
+            throw new NotImplementedException();
+        }
+
+        public override void SetLength(long value)
+        {
+            throw new NotImplementedException();
+        }
+
+        public override void Write(byte[] buffer, int offset, int count)
+        {
+            throw new NotImplementedException();
+        }
+
+        public override async Task WriteAsync(byte[] buffer, int offset, int count, CancellationToken cancellationToken)
+        {
+            await Task.Delay(30000, cancellationToken);
+        }
+
+        public override async Task FlushAsync(CancellationToken cancellationToken)
+        {
+            await Task.Delay(30000, cancellationToken);
+        }
+
+        public override async Task<int> ReadAsync(byte[] buffer, int offset, int count, CancellationToken cancellationToken)
+        {
+            await Task.Delay(30000, cancellationToken);
+            return 0;
         }
     }
 }
