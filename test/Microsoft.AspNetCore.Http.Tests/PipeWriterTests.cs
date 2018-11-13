@@ -86,6 +86,18 @@ namespace Microsoft.AspNetCore.Http.Tests
         }
 
         [Fact]
+        public async Task CanWriteAsyncMultipleTimes()
+        {
+            PipeWriter writer = Pipe.Writer;
+
+            await writer.WriteAsync(new byte[] { 1 });
+            await writer.WriteAsync(new byte[] { 2 });
+            await writer.WriteAsync(new byte[] { 3 });
+
+            Assert.Equal(new byte[] { 1, 2, 3 }, Read());
+        }
+
+        [Fact]
         public void CanWriteOverTheBlockLength()
         {
             Memory<byte> memory = Pipe.Writer.GetMemory();

@@ -44,5 +44,15 @@ namespace Microsoft.AspNetCore.Http
         {
             await _pipeWriter.WriteAsync(_largeWrite);
         }
+
+
+        [Benchmark]
+        public async Task WriteHelloWorldLargeNumberOfLargeWrites()
+        {
+            for (var i = 0; i < 100; i++)
+            {
+                await _pipeWriter.WriteAsync(_largeWrite);
+            }
+        }
     }
 }
