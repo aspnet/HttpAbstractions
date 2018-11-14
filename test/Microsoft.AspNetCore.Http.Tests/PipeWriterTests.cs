@@ -26,19 +26,18 @@ namespace Microsoft.AspNetCore.Http.Tests
         [InlineData(3, 4, 4)]
         public void ThrowsForInvalidParameters(int arrayLength, int offset, int length)
         {
-            PipeWriter writer = Pipe.Writer;
             var array = new byte[arrayLength];
             for (var i = 0; i < array.Length; i++)
             {
                 array[i] = (byte)(i + 1);
             }
 
-            writer.Write(new Span<byte>(array, 0, 0));
-            writer.Write(new Span<byte>(array, array.Length, 0));
+            Writer.Write(new Span<byte>(array, 0, 0));
+            Writer.Write(new Span<byte>(array, array.Length, 0));
 
             try
             {
-                writer.Write(new Span<byte>(array, offset, length));
+                Writer.Write(new Span<byte>(array, offset, length));
                 Assert.True(false);
             }
             catch (Exception ex)
@@ -46,7 +45,7 @@ namespace Microsoft.AspNetCore.Http.Tests
                 Assert.True(ex is ArgumentOutOfRangeException);
             }
 
-            writer.Write(new Span<byte>(array, 0, array.Length));
+            Writer.Write(new Span<byte>(array, 0, array.Length));
             Assert.Equal(array, Read());
         }
 
@@ -57,10 +56,9 @@ namespace Microsoft.AspNetCore.Http.Tests
         [InlineData(1, 1)]
         public void CanWriteWithOffsetAndLength(int offset, int length)
         {
-            PipeWriter writer = Pipe.Writer;
             var array = new byte[] { 1, 2, 3 };
 
-            writer.Write(new Span<byte>(array, offset, length));
+            Writer.Write(new Span<byte>(array, offset, length));
 
             Assert.Equal(array.Skip(offset).Take(length).ToArray(), Read());
         }
@@ -68,20 +66,58 @@ namespace Microsoft.AspNetCore.Http.Tests
         [Fact]
         public void CanWriteIntoHeadlessBuffer()
         {
-            PipeWriter writer = Pipe.Writer;
 
-            writer.Write(new byte[] { 1, 2, 3 });
+            Writer.Write(new byte[] { 1, 2, 3 });
             Assert.Equal(new byte[] { 1, 2, 3 }, Read());
+        }
+
+        [Fact]
+        public void CanGetNewMemoryWhenSizeTooLarge()
+        {
+            var memory = Writer.GetMemory(0);
+
+            var memoryLarge = Writer.GetMemory(8000);
+
+            Assert.NotEqual(memory, memoryLarge);
+        }
+
+        [Fact]
+        public void CanGetSameMemoryWhenNoAdvance()
+        {
+            var memory = Writer.GetMemory(0);
+
+            var secondMemory = Writer.GetMemory(0);
+
+            Assert.Equal(memory, secondMemory);
+        }
+
+        [Fact]
+        public void CanGetNewSpanWhenNoAdvanceWhenSizeTooLarge()
+        {
+            var span = Writer.GetSpan(0);
+
+            var secondSpan = Writer.GetSpan(8000);
+
+            Assert.False(span.SequenceEqual(secondSpan));
+        }
+
+        [Fact]
+        public void CanGetSameSpanWhenNoAdvance()
+        {
+            var span = Writer.GetSpan(0);
+
+            var secondSpan = Writer.GetSpan(0);
+
+            Assert.True(span.SequenceEqual(secondSpan));
         }
 
         [Fact]
         public void CanWriteMultipleTimes()
         {
-            PipeWriter writer = Pipe.Writer;
 
-            writer.Write(new byte[] { 1 });
-            writer.Write(new byte[] { 2 });
-            writer.Write(new byte[] { 3 });
+            Writer.Write(new byte[] { 1 });
+            Writer.Write(new byte[] { 2 });
+            Writer.Write(new byte[] { 3 });
 
             Assert.Equal(new byte[] { 1, 2, 3 }, Read());
         }
@@ -89,11 +125,10 @@ namespace Microsoft.AspNetCore.Http.Tests
         [Fact]
         public async Task CanWriteAsyncMultipleTimesIntoSameBlock()
         {
-            PipeWriter writer = Pipe.Writer;
 
-            await writer.WriteAsync(new byte[] { 1 });
-            await writer.WriteAsync(new byte[] { 2 });
-            await writer.WriteAsync(new byte[] { 3 });
+            await Writer.WriteAsync(new byte[] { 1 });
+            await Writer.WriteAsync(new byte[] { 2 });
+            await Writer.WriteAsync(new byte[] { 3 });
 
             Assert.Equal(new byte[] { 1, 2, 3 }, Read());
         }
@@ -106,18 +141,17 @@ namespace Microsoft.AspNetCore.Http.Tests
         [InlineData(8000, 8000)]
         public async Task CanAdvanceWithPartialConsumptionOfFirstSegment(int firstWriteLength, int secondWriteLength)
         {
-            PipeWriter writer = Pipe.Writer;
-            await writer.WriteAsync(Encoding.ASCII.GetBytes("a"));
+            await Writer.WriteAsync(Encoding.ASCII.GetBytes("a"));
 
             var expectedLength = firstWriteLength + secondWriteLength + 1;
 
-            var memory = writer.GetMemory(firstWriteLength);
-            writer.Advance(firstWriteLength);
+            var memory = Writer.GetMemory(firstWriteLength);
+            Writer.Advance(firstWriteLength);
 
-            memory = writer.GetMemory(secondWriteLength);
-            writer.Advance(secondWriteLength);
+            memory = Writer.GetMemory(secondWriteLength);
+            Writer.Advance(secondWriteLength);
 
-            await writer.FlushAsync();
+            await Writer.FlushAsync();
 
             Assert.Equal(expectedLength, Read().Length);
         }
@@ -125,13 +159,12 @@ namespace Microsoft.AspNetCore.Http.Tests
         [Fact]
         public void CanWriteOverTheBlockLength()
         {
-            Memory<byte> memory = Pipe.Writer.GetMemory();
-            PipeWriter writer = Pipe.Writer;
+            Memory<byte> memory = Writer.GetMemory();
 
             IEnumerable<byte> source = Enumerable.Range(0, memory.Length).Select(i => (byte)i);
             byte[] expectedBytes = source.Concat(source).Concat(source).ToArray();
 
-            writer.Write(expectedBytes);
+            Writer.Write(expectedBytes);
 
             Assert.Equal(expectedBytes, Read());
         }
@@ -139,24 +172,22 @@ namespace Microsoft.AspNetCore.Http.Tests
         [Fact]
         public void EnsureAllocatesSpan()
         {
-            PipeWriter writer = Pipe.Writer;
-            var span = writer.GetSpan(10);
+            var span = Writer.GetSpan(10);
 
             Assert.True(span.Length >= 10);
             // 0 byte Flush would not complete the reader so we complete.
-            Pipe.Writer.Complete();
+            Writer.Complete();
             Assert.Equal(new byte[] { }, Read());
         }
 
         [Fact]
         public void SlicesSpanAndAdvancesAfterWrite()
         {
-            int initialLength = Pipe.Writer.GetSpan(3).Length;
+            int initialLength = Writer.GetSpan(3).Length;
 
-            PipeWriter writer = Pipe.Writer;
 
-            writer.Write(new byte[] { 1, 2, 3 });
-            Span<byte> span = Pipe.Writer.GetSpan();
+            Writer.Write(new byte[] { 1, 2, 3 });
+            Span<byte> span = Writer.GetSpan();
 
             Assert.Equal(initialLength - 3, span.Length);
             Assert.Equal(new byte[] { 1, 2, 3 }, Read());
@@ -172,7 +203,7 @@ namespace Microsoft.AspNetCore.Http.Tests
         {
             var data = new byte[length];
             new Random(length).NextBytes(data);
-            PipeWriter output = Pipe.Writer;
+            PipeWriter output = Writer;
             output.Write(data);
             await output.FlushAsync();
 
@@ -183,30 +214,29 @@ namespace Microsoft.AspNetCore.Http.Tests
         [Fact]
         public async Task CanWriteNothingToBuffer()
         {
-            PipeWriter buffer = Pipe.Writer;
-            buffer.GetMemory(0);
-            buffer.Advance(0); // doing nothing, the hard way
-            await buffer.FlushAsync();
+            Writer.GetMemory(0);
+            Writer.Advance(0); // doing nothing, the hard way
+            await Writer.FlushAsync();
         }
 
         [Fact]
         public void EmptyWriteDoesNotThrow()
         {
-            Pipe.Writer.Write(new byte[0]);
+            Writer.Write(new byte[0]);
         }
 
         [Fact]
         public void ThrowsOnAdvanceOverMemorySize()
         {
-            Memory<byte> buffer = Pipe.Writer.GetMemory(1);
-            var exception = Assert.Throws<InvalidOperationException>(() => Pipe.Writer.Advance(buffer.Length + 1));
+            Memory<byte> buffer = Writer.GetMemory(1);
+            var exception = Assert.Throws<InvalidOperationException>(() => Writer.Advance(buffer.Length + 1));
             Assert.Equal("Can't advance past buffer size.", exception.Message);
         }
 
         [Fact]
         public void ThrowsOnAdvanceWithNoMemory()
         {
-            PipeWriter buffer = Pipe.Writer;
+            PipeWriter buffer = Writer;
             var exception = Assert.Throws<InvalidOperationException>(() => buffer.Advance(1));
             Assert.Equal("No writing operation. Make sure GetMemory() was called.", exception.Message);
         }
@@ -214,7 +244,7 @@ namespace Microsoft.AspNetCore.Http.Tests
         [Fact]
         public async Task ThrowsOnCompleteAndWrite()
         {
-            PipeWriter buffer = Pipe.Writer;
+            PipeWriter buffer = Writer;
             buffer.Complete(new InvalidOperationException("Whoops"));
             var exception = await Assert.ThrowsAsync<InvalidOperationException>(async () => await buffer.FlushAsync());
 
@@ -268,7 +298,7 @@ namespace Microsoft.AspNetCore.Http.Tests
             var cts = new CancellationTokenSource();
             var cts2 = new CancellationTokenSource();
 
-            PipeWriter buffer = Pipe.Writer.WriteEmpty(MaximumSizeHigh);
+            PipeWriter buffer = Writer.WriteEmpty(MaximumSizeHigh);
 
             var e = new ManualResetEventSlim();
 
@@ -303,9 +333,9 @@ namespace Microsoft.AspNetCore.Http.Tests
         [Fact]
         public void FlushAsyncCompletedAfterPreCancellation()
         {
-            PipeWriter writableBuffer = Pipe.Writer.WriteEmpty(1);
+            PipeWriter writableBuffer = Writer.WriteEmpty(1);
 
-            Pipe.Writer.CancelPendingFlush();
+            Writer.CancelPendingFlush();
 
             ValueTask<FlushResult> flushAsync = writableBuffer.FlushAsync();
 
@@ -349,20 +379,20 @@ namespace Microsoft.AspNetCore.Http.Tests
         public async Task FlushAsyncWithNewCancellationTokenNotAffectedByPrevious()
         {
             var cancellationTokenSource1 = new CancellationTokenSource();
-            PipeWriter buffer = Pipe.Writer.WriteEmpty(10);
+            PipeWriter buffer = Writer.WriteEmpty(10);
             await buffer.FlushAsync(cancellationTokenSource1.Token);
 
             cancellationTokenSource1.Cancel();
 
             var cancellationTokenSource2 = new CancellationTokenSource();
-            buffer = Pipe.Writer.WriteEmpty(10);
+            buffer = Writer.WriteEmpty(10);
 
             await buffer.FlushAsync(cancellationTokenSource2.Token);
         }
 
         private byte[] Read()
         {
-            Pipe.Writer.FlushAsync().GetAwaiter().GetResult();
+            Writer.FlushAsync().GetAwaiter().GetResult();
             MemoryStream.Position = 0;
             var buffer = new byte[MemoryStream.Length];
             var result = MemoryStream.Read(buffer, 0, (int)MemoryStream.Length);
@@ -371,15 +401,15 @@ namespace Microsoft.AspNetCore.Http.Tests
 
         private async Task CheckWriteIsNotCanceled()
         {
-            var flushResult = await Pipe.Writer.WriteAsync(Encoding.ASCII.GetBytes("data"));
+            var flushResult = await Writer.WriteAsync(Encoding.ASCII.GetBytes("data"));
             Assert.False(flushResult.IsCanceled);
         }
 
         private void CheckCanceledFlush()
         {
-            PipeWriter writableBuffer = Pipe.Writer.WriteEmpty(MaximumSizeHigh);
+            PipeWriter writableBuffer = Writer.WriteEmpty(MaximumSizeHigh);
 
-            Pipe.Writer.CancelPendingFlush();
+            Writer.CancelPendingFlush();
 
             ValueTask<FlushResult> flushAsync = writableBuffer.FlushAsync();
 
@@ -445,11 +475,11 @@ namespace Microsoft.AspNetCore.Http.Tests
 
     internal static class TestWriterExtensions
     {
-        public static PipeWriter WriteEmpty(this PipeWriter writer, int count)
+        public static PipeWriter WriteEmpty(this PipeWriter Writer, int count)
         {
-            writer.GetSpan(count).Slice(0, count).Fill(0);
-            writer.Advance(count);
-            return writer;
+            Writer.GetSpan(count).Slice(0, count).Fill(0);
+            Writer.Advance(count);
+            return Writer;
         }
     }
 }

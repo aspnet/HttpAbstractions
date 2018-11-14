@@ -25,7 +25,6 @@ namespace Microsoft.AspNetCore.Http
         private List<CompletedBuffer> _completedSegments;
         private byte[] _currentSegment;
         private int _position;
-        private int _previousSegmentPosition;
 
         private CancellationTokenSource _internalTokenSource;
         private bool _isCompleted;
@@ -158,31 +157,11 @@ namespace Microsoft.AspNetCore.Http
                 // and flush the result.
                 if (_completedSegments != null && _completedSegments.Count > 0)
                 {
-                    // We need to treat the first completed segment uniquely because we allow 
-                    // partial consumption of the first CompletedSegment.
-                    // Example:
-                    // A user calls GetMemory(11) to move the _currentSegment _position to 11 and then call FlushAsync().
-                    // Afterwards, they call GetMemory(1000), which would return Memory in _currentSegment.
-                    // Afterwards, they call GetMemory(8000), which would return a new segment, which moves _currentSegment to _completedSegments
-                    // Then the user calls FlushAsync().
-                    // At this point, the firstSegment needs to be treated differently because it was only partially written to.
-                    // To fix this, we use _previousSegmentPosition to store how far we were into the first _completedSegment.
-                    var firstSegment = _completedSegments[0];
-                    await _writingStream.WriteAsync(firstSegment.Buffer, 
-                        _previousSegmentPosition, 
-                        firstSegment.Length - _previousSegmentPosition, 
-                        token);
-
-                    // We also need to keep track of how many bytes we have written so far,
-                    // s.t. the final write knows how many bytes have been consumed.
-                    _bytesWritten -= firstSegment.Length - _previousSegmentPosition;
-
                     var count = _completedSegments.Count;
-                    for (var i = 1; i < count; i++)
+                    for (var i = 0; i < count; i++)
                     {
                         var segment = _completedSegments[i];
                         await _writingStream.WriteAsync(segment.Buffer, 0, segment.Length, token);
-                        _bytesWritten -= segment.Length;
                         segment.Return();
                     }
 
@@ -191,7 +170,7 @@ namespace Microsoft.AspNetCore.Http
 
                 if (_currentSegment != null)
                 {
-                    await _writingStream.WriteAsync(_currentSegment, _position - _bytesWritten, _bytesWritten, token);
+                    await _writingStream.WriteAsync(_currentSegment, 0, _position, token);
                 }
 
                 await _writingStream.FlushAsync(token);
@@ -204,7 +183,7 @@ namespace Microsoft.AspNetCore.Http
 
             // After writing to the stream, we can return all ArrayPool segments that are completed.
             _bytesWritten = 0;
-            _previousSegmentPosition = _position;
+            _position = 0;
 
             return new FlushResult(isCanceled: false, IsCompletedOrThrow());
         }

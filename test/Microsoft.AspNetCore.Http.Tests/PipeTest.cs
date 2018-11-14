@@ -15,6 +15,8 @@ namespace Microsoft.AspNetCore.Http.Tests
 
         public MemoryStream MemoryStream { get; set; }
 
+        public PipeWriter Writer => Pipe.Writer;
+
         protected PipeTest()
         {
             MemoryStream = new MemoryStream();
