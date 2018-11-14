@@ -108,7 +108,7 @@ namespace Microsoft.AspNetCore.Http.Tests
             Assert.Equal(expected, Read());
         }
 
-                [Fact]
+        [Fact]
         public async Task CanWriteBetweenMultipleBlocks()
         {
             PipeWriter writer = Pipe.Writer;
