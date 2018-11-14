@@ -11,7 +11,7 @@ namespace Microsoft.AspNetCore.Http
     public class PipeWriterAdapterBenchmark
     {
         private MemoryStream _memoryStream;
-        private PipeWriterAdapter _pipeWriter;
+        private StreamPipeWriter _pipeWriter;
         private byte[] _helloWorldBytes;
         private byte[] _largeWrite;
 
@@ -19,7 +19,7 @@ namespace Microsoft.AspNetCore.Http
         public void Setup()
         {
             _memoryStream = new MemoryStream();
-            _pipeWriter = new PipeWriterAdapter(_memoryStream);
+            _pipeWriter = new StreamPipeWriter(_memoryStream);
             _helloWorldBytes = Encoding.ASCII.GetBytes("Hello World");
             _largeWrite = Encoding.ASCII.GetBytes(new string('a', 50000));
         }

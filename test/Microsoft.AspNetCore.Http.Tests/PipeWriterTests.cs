@@ -98,6 +98,28 @@ namespace Microsoft.AspNetCore.Http.Tests
         }
 
         [Fact]
+        public async Task CanWritePartialBeginningBlock()
+        {
+            PipeWriter writer = Pipe.Writer;
+            var expected = Encoding.ASCII.GetBytes((new string('a', 3000)) + (new string('b', 3000)));
+            await writer.WriteAsync(Encoding.ASCII.GetBytes(new string('a', 3000)));
+            await writer.WriteAsync(Encoding.ASCII.GetBytes(new string('b', 3000)));
+
+            Assert.Equal(expected, Read());
+        }
+
+                [Fact]
+        public async Task CanWriteBetweenMultipleBlocks()
+        {
+            PipeWriter writer = Pipe.Writer;
+            var expected = Encoding.ASCII.GetBytes((new string('a', 3000)) + (new string('b', 9000)));
+            await writer.WriteAsync(Encoding.ASCII.GetBytes(new string('a', 3000)));
+            await writer.WriteAsync(Encoding.ASCII.GetBytes(new string('b', 9000)));
+
+            Assert.Equal(expected, Read());
+        }
+
+        [Fact]
         public void CanWriteOverTheBlockLength()
         {
             Memory<byte> memory = Pipe.Writer.GetMemory();
