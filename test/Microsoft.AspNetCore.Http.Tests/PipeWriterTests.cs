@@ -7,6 +7,7 @@ using System.Collections.Generic;
 using System.IO;
 using System.IO.Pipelines;
 using System.Linq;
+using System.Runtime.CompilerServices;
 using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
@@ -86,7 +87,7 @@ namespace Microsoft.AspNetCore.Http.Tests
         }
 
         [Fact]
-        public async Task CanWriteAsyncMultipleTimes()
+        public async Task CanWriteAsyncMultipleTimesIntoSameBlock()
         {
             PipeWriter writer = Pipe.Writer;
 
@@ -97,26 +98,28 @@ namespace Microsoft.AspNetCore.Http.Tests
             Assert.Equal(new byte[] { 1, 2, 3 }, Read());
         }
 
-        [Fact]
-        public async Task CanWritePartialBeginningBlock()
+        [Theory]
+        [InlineData(100, 1000)]
+        [InlineData(100, 8000)]
+        [InlineData(100, 10000)]
+        [InlineData(8000, 100)]
+        [InlineData(8000, 8000)]
+        public async Task CanAdvanceWithPartialConsumptionOfFirstSegment(int firstWriteLength, int secondWriteLength)
         {
             PipeWriter writer = Pipe.Writer;
-            var expected = Encoding.ASCII.GetBytes((new string('a', 3000)) + (new string('b', 3000)));
-            await writer.WriteAsync(Encoding.ASCII.GetBytes(new string('a', 3000)));
-            await writer.WriteAsync(Encoding.ASCII.GetBytes(new string('b', 3000)));
+            await writer.WriteAsync(Encoding.ASCII.GetBytes("a"));
 
-            Assert.Equal(expected, Read());
-        }
+            var expectedLength = firstWriteLength + secondWriteLength + 1;
 
-        [Fact]
-        public async Task CanWriteBetweenMultipleBlocks()
-        {
-            PipeWriter writer = Pipe.Writer;
-            var expected = Encoding.ASCII.GetBytes((new string('a', 3000)) + (new string('b', 9000)));
-            await writer.WriteAsync(Encoding.ASCII.GetBytes(new string('a', 3000)));
-            await writer.WriteAsync(Encoding.ASCII.GetBytes(new string('b', 9000)));
+            var memory = writer.GetMemory(firstWriteLength);
+            writer.Advance(firstWriteLength);
 
-            Assert.Equal(expected, Read());
+            memory = writer.GetMemory(secondWriteLength);
+            writer.Advance(secondWriteLength);
+
+            await writer.FlushAsync();
+
+            Assert.Equal(expectedLength, Read().Length);
         }
 
         [Fact]
@@ -228,23 +231,133 @@ namespace Microsoft.AspNetCore.Http.Tests
         }
 
         [Fact]
-        public async Task WriteCanBeCancelledViaCancelPendingFlush()
+        public async Task WriteCanBeCanceledViaCancelPendingFlushWhenFlushIsAsync()
         {
             var pipeWriter = new StreamPipeWriter(new HangingStream());
             FlushResult flushResult = new FlushResult();
 
-            var task = new Task(async () =>
+            var e = new ManualResetEventSlim();
+
+            var task = Task.Run(async () =>
             {
-                flushResult = await pipeWriter.WriteAsync(Encoding.ASCII.GetBytes("data"));
+                try
+                {
+                    var writingTask = pipeWriter.WriteAsync(Encoding.ASCII.GetBytes("data"));
+                    e.Set();
+                    flushResult = await writingTask;
+                }
+                catch (Exception ex)
+                {
+                    Console.WriteLine(ex.Message);
+                    throw ex;
+                }
             });
 
-            task.Start();
+            e.Wait();
 
             pipeWriter.CancelPendingFlush();
 
             await task;
 
             Assert.True(flushResult.IsCanceled);
+        }
+
+        [Fact]
+        public void FlushAsyncCancellationDeadlock()
+        {
+            var cts = new CancellationTokenSource();
+            var cts2 = new CancellationTokenSource();
+
+            PipeWriter buffer = Pipe.Writer.WriteEmpty(MaximumSizeHigh);
+
+            var e = new ManualResetEventSlim();
+
+            ValueTaskAwaiter<FlushResult> awaiter = buffer.FlushAsync(cts.Token).GetAwaiter();
+            awaiter.OnCompleted(
+                () => {
+                    // We are on cancellation thread and need to wait until another FlushAsync call
+                    // takes pipe state lock
+                    e.Wait();
+
+                    // Make sure we had enough time to reach _cancellationTokenRegistration.Dispose
+                    Thread.Sleep(100);
+
+                    // Try to take pipe state lock
+                    buffer.FlushAsync();
+                });
+
+            // Start a thread that would run cancellation callbacks
+            Task cancellationTask = Task.Run(() => cts.Cancel());
+            // Start a thread that would call FlushAsync with different token
+            // and block on _cancellationTokenRegistration.Dispose
+            Task blockingTask = Task.Run(
+                () => {
+                    e.Set();
+                    buffer.FlushAsync(cts2.Token);
+                });
+
+            bool completed = Task.WhenAll(cancellationTask, blockingTask).Wait(TimeSpan.FromSeconds(10));
+            Assert.True(completed);
+        }
+
+        [Fact]
+        public void FlushAsyncCompletedAfterPreCancellation()
+        {
+            PipeWriter writableBuffer = Pipe.Writer.WriteEmpty(1);
+
+            Pipe.Writer.CancelPendingFlush();
+
+            ValueTask<FlushResult> flushAsync = writableBuffer.FlushAsync();
+
+            Assert.True(flushAsync.IsCompleted);
+
+            FlushResult flushResult = flushAsync.GetAwaiter().GetResult();
+
+            Assert.True(flushResult.IsCanceled);
+
+            flushAsync = writableBuffer.FlushAsync();
+
+            Assert.True(flushAsync.IsCompleted);
+        }
+
+        [Fact]
+        public void FlushAsyncReturnsCanceledIfCanceledBeforeFlush()
+        {
+            CheckCanceledFlush();
+        }
+
+        [Fact]
+        public void FlushAsyncReturnsCanceledIfCanceledBeforeFlushMultipleTimes()
+        {
+            for (var i = 0; i < 10; i++)
+            {
+                CheckCanceledFlush();
+            }
+        }
+
+        [Fact]
+        public async Task FlushAsyncReturnsCanceledInterleaved()
+        {
+            for (var i = 0; i < 5; i++)
+            {
+                CheckCanceledFlush();
+                await CheckWriteIsNotCanceled();
+            }
+        }
+
+        [Fact]
+        public async Task FlushAsyncWithNewCancellationTokenNotAffectedByPrevious()
+        {
+            var cancellationTokenSource1 = new CancellationTokenSource();
+            PipeWriter buffer = Pipe.Writer.WriteEmpty(10);
+            await buffer.FlushAsync(cancellationTokenSource1.Token);
+
+            cancellationTokenSource1.Cancel();
+
+            var cancellationTokenSource2 = new CancellationTokenSource();
+            buffer = Pipe.Writer.WriteEmpty(10);
+
+            await buffer.FlushAsync(cancellationTokenSource2.Token);
         }
 
         private byte[] Read()
@@ -254,6 +367,25 @@ namespace Microsoft.AspNetCore.Http.Tests
             var buffer = new byte[MemoryStream.Length];
             var result = MemoryStream.Read(buffer, 0, (int)MemoryStream.Length);
             return buffer;
+        }
+
+        private async Task CheckWriteIsNotCanceled()
+        {
+            var flushResult = await Pipe.Writer.WriteAsync(Encoding.ASCII.GetBytes("data"));
+            Assert.False(flushResult.IsCanceled);
+        }
+
+        private void CheckCanceledFlush()
+        {
+            PipeWriter writableBuffer = Pipe.Writer.WriteEmpty(MaximumSizeHigh);
+
+            Pipe.Writer.CancelPendingFlush();
+
+            ValueTask<FlushResult> flushAsync = writableBuffer.FlushAsync();
+
+            Assert.True(flushAsync.IsCompleted);
+            FlushResult flushResult = flushAsync.GetAwaiter().GetResult();
+            Assert.True(flushResult.IsCanceled);
         }
     }
 
@@ -308,6 +440,16 @@ namespace Microsoft.AspNetCore.Http.Tests
         {
             await Task.Delay(30000, cancellationToken);
             return 0;
+        }
+    }
+
+    internal static class TestWriterExtensions
+    {
+        public static PipeWriter WriteEmpty(this PipeWriter writer, int count)
+        {
+            writer.GetSpan(count).Slice(0, count).Fill(0);
+            writer.Advance(count);
+            return writer;
         }
     }
 }
