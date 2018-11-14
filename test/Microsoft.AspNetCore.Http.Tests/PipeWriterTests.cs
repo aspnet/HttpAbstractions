@@ -199,7 +199,7 @@ namespace Microsoft.AspNetCore.Http.Tests
         [Fact]
         public async Task WriteCanBeCancelledViaProvidedCancellationToken()
         {
-            var pipeWriter = new PipeWriterAdapter(new HangingStream());
+            var pipeWriter = new StreamPipeWriter(new HangingStream());
             var cts = new CancellationTokenSource(1);
             var flushResult = await pipeWriter.WriteAsync(Encoding.ASCII.GetBytes("data"), cts.Token);
             Assert.True(flushResult.IsCanceled);
@@ -208,7 +208,7 @@ namespace Microsoft.AspNetCore.Http.Tests
         [Fact]
         public async Task WriteCanBeCancelledViaCancelPendingFlush()
         {
-            var pipeWriter = new PipeWriterAdapter(new HangingStream());
+            var pipeWriter = new StreamPipeWriter(new HangingStream());
             FlushResult flushResult = new FlushResult();
 
             var task = new Task(async () =>

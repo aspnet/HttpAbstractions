@@ -31,28 +31,9 @@ namespace Microsoft.AspNetCore.Http
         }
 
         [Benchmark]
-        public async Task WriteHelloWorldLargeNumberOfWrites()
-        {
-            for (var i = 0; i < 1000; i++)
-            {
-                await _pipeWriter.WriteAsync(_helloWorldBytes);
-            }
-        }
-
-        [Benchmark]
         public async Task WriteHelloWorldLargeWrite()
         {
             await _pipeWriter.WriteAsync(_largeWrite);
-        }
-
-
-        [Benchmark]
-        public async Task WriteHelloWorldLargeNumberOfLargeWrites()
-        {
-            for (var i = 0; i < 100; i++)
-            {
-                await _pipeWriter.WriteAsync(_largeWrite);
-            }
         }
     }
 }

@@ -16,7 +16,7 @@ namespace Microsoft.AspNetCore.Http
     /// <summary>
     /// Implements PipeWriter using a base stream implementation. 
     /// </summary>
-    public class PipeWriterAdapter : PipeWriter, IDisposable
+    public class StreamPipeWriter : PipeWriter, IDisposable
     {
         private readonly int _minimumSegmentSize;
         private readonly Stream _writingStream;
@@ -28,7 +28,6 @@ namespace Microsoft.AspNetCore.Http
 
         private CancellationTokenSource _internalTokenSource;
         private bool _isCompleted;
-        private bool _currentFlushCanceled;
         private ExceptionDispatchInfo _exceptionInfo;
 
         private CancellationTokenSource InternalTokenSource
@@ -44,11 +43,11 @@ namespace Microsoft.AspNetCore.Http
             set { _internalTokenSource = value; }
         }
 
-        public PipeWriterAdapter(Stream writingStream) : this(writingStream, 4096)
+        public StreamPipeWriter(Stream writingStream) : this(writingStream, 4096)
         {
         }
 
-        public PipeWriterAdapter(Stream writingStream, int minimumSegmentSize)
+        public StreamPipeWriter(Stream writingStream, int minimumSegmentSize)
         {
             _minimumSegmentSize = minimumSegmentSize;
             _writingStream = writingStream;
@@ -92,7 +91,6 @@ namespace Microsoft.AspNetCore.Http
         /// <inheritdoc />
         public override void CancelPendingFlush()
         {
-            _currentFlushCanceled = true;
             InternalTokenSource?.Cancel();
         }
 
@@ -133,21 +131,25 @@ namespace Microsoft.AspNetCore.Http
 
             // Wrap the provided cancellationToken with an internal one
             // to allow CancelPendingFlush to cancel writes and flushes
-            if (_currentFlushCanceled)
+            if (InternalTokenSource.IsCancellationRequested)
             {
                 // If CancelPendingFlush was already called, we need to return a FlushResult with
                 // Canceled. At this point, we create a fresh CTS that isn't canceled.
+                // PERF: we only create a new CTS if the previous one wasn't canceled.
+                // Otherwise, we would need to create a new CTS for every call to FlushAsync.
                 var result = new FlushResult(isCanceled: true, IsCompletedOrThrow());
                 InternalTokenSource = new CancellationTokenSource();
-                _currentFlushCanceled = false;
                 return result;
             }
 
-            // As an optimization, we only create a new CTS if the previous one wasn't canceled.
-            // Otherwise, we would need to create a new CTS for every call to FlushAsync.
-            var joinedToken = CancellationTokenSource.CreateLinkedTokenSource(
-                cancellationToken,
-                InternalTokenSource.Token).Token;
+            var token = InternalTokenSource.Token;
+            if (cancellationToken != CancellationToken.None)
+            {
+                // PERF: only link token sources if FlushAsync was provided a cancellation token.
+                token = CancellationTokenSource.CreateLinkedTokenSource(
+                    cancellationToken,
+                    InternalTokenSource.Token).Token;
+            }
 
             try
             {
@@ -159,16 +161,19 @@ namespace Microsoft.AspNetCore.Http
                     for (var i = 0; i < count; i++)
                     {
                         var segment = _completedSegments[i];
-                        await _writingStream.WriteAsync(segment.Buffer, 0, segment.Length, joinedToken);
+                        await _writingStream.WriteAsync(segment.Buffer, 0, segment.Length, token);
+                        segment.Return();
                     }
+                    _completedSegments.Clear();
                 }
 
                 if (_currentSegment != null)
                 {
-                    await _writingStream.WriteAsync(_currentSegment, 0, _position, joinedToken);
+                    await _writingStream.WriteAsync(_currentSegment, 0, _position, token);
                 }
 
-                await _writingStream.FlushAsync(joinedToken);
+
+                await _writingStream.FlushAsync(token);
             }
             catch (OperationCanceledException)
             {
@@ -177,7 +182,7 @@ namespace Microsoft.AspNetCore.Http
             }
 
             // After writing to the stream, we can return all ArrayPool segments that are completed.
-            ReturnCompletedBuffers();
+            _bytesWritten = 0;
 
             return new FlushResult(isCanceled: false, IsCompletedOrThrow());
         }
@@ -240,21 +245,6 @@ namespace Microsoft.AspNetCore.Http
         private void ThrowLatchedException()
         {
             _exceptionInfo.Throw();
-        }
-
-        private void ReturnCompletedBuffers()
-        {
-            if (_completedSegments != null)
-            {
-                for (var i = 0; i < _completedSegments.Count; i++)
-                {
-                    _completedSegments[i].Return();
-                }
-
-                _completedSegments.Clear();
-            }
-
-            _bytesWritten = 0;
         }
 
         public void Dispose()
