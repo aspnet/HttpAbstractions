@@ -14,7 +14,7 @@ using System.Threading.Tasks;
 namespace Microsoft.AspNetCore.Http
 {
     /// <summary>
-    /// Implements PipeWriter using a base stream implementation. 
+    /// Implements PipeWriter using a underlying stream. 
     /// </summary>
     public class StreamPipeWriter : PipeWriter, IDisposable
     {
@@ -42,7 +42,11 @@ namespace Microsoft.AspNetCore.Http
             }
             set { _internalTokenSource = value; }
         }
-
+        
+        /// <summary>
+        /// Creates a new StreamPipeWrapper 
+        /// </summary>
+        /// <param name="writingStream">The stream to write to</param>
         public StreamPipeWriter(Stream writingStream) : this(writingStream, 4096)
         {
         }
@@ -114,6 +118,12 @@ namespace Microsoft.AspNetCore.Http
 
             // Note this currently doesn't do anything.
             // Implementing completions/callbacks would require creating a PipeReaderAdapter.
+        }
+
+        /// <inheritdoc />
+        public override ValueTask<FlushResult> WriteAsync(ReadOnlyMemory<byte> source, CancellationToken cancellationToken = default)
+        {
+            return base.WriteAsync(source, cancellationToken);
         }
 
         /// <inheritdoc />

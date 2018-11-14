@@ -8,7 +8,7 @@ using BenchmarkDotNet.Attributes;
 
 namespace Microsoft.AspNetCore.Http
 {
-    public class PipeWriterAdapterBenchmark
+    public class StreamPipeWriterBenchmark
     {
         private MemoryStream _memoryStream;
         private StreamPipeWriter _pipeWriter;

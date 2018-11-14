@@ -111,6 +111,19 @@ namespace Microsoft.AspNetCore.Http.Tests
             Assert.True(span.SequenceEqual(secondSpan));
         }
 
+        [Theory]
+        [InlineData(16, 32, 32)]
+        [InlineData(16, 16, 16)]
+        [InlineData(64, 32, 64)]
+        [InlineData(40, 32, 64)] // memory sizes are powers of 2.
+        public void CheckMinimumSegmentSizeWithGetMemory(int minimumSegmentSize, int getMemorySize, int expectedSize)
+        {
+            var writer = new StreamPipeWriter(new MemoryStream(), minimumSegmentSize);
+            var memory = writer.GetMemory(getMemorySize);
+
+            Assert.Equal(expectedSize, memory.Length);
+        }
+
         [Fact]
         public void CanWriteMultipleTimes()
         {
