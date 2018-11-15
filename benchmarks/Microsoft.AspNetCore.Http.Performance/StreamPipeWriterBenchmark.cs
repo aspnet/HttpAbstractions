@@ -12,16 +12,14 @@ namespace Microsoft.AspNetCore.Http
     {
         private MemoryStream _memoryStream;
         private StreamPipeWriter _pipeWriter;
-        private byte[] _helloWorldBytes;
-        private byte[] _largeWrite;
+        private static byte[] _helloWorldBytes = Encoding.ASCII.GetBytes("Hello World");
+        private static byte[] _largeWrite = Encoding.ASCII.GetBytes(new string('a', 50000));
 
         [IterationSetup]
         public void Setup()
         {
             _memoryStream = new MemoryStream();
             _pipeWriter = new StreamPipeWriter(_memoryStream);
-            _helloWorldBytes = Encoding.ASCII.GetBytes("Hello World");
-            _largeWrite = Encoding.ASCII.GetBytes(new string('a', 50000));
         }
 
         [Benchmark]
