@@ -25,12 +25,12 @@ namespace Microsoft.AspNetCore.Http
         private List<CompletedBuffer> _completedSegments;
         private Memory<byte> _currentSegment;
         private IMemoryOwner<byte> _currentSegmentOwner;
+        private MemoryPool<byte> _pool;
         private int _position;
 
         private CancellationTokenSource _internalTokenSource;
         private bool _isCompleted;
         private ExceptionDispatchInfo _exceptionInfo;
-
         private object lockObject = new object();
 
         private CancellationTokenSource InternalTokenSource
@@ -60,6 +60,7 @@ namespace Microsoft.AspNetCore.Http
         {
             _minimumSegmentSize = minimumSegmentSize;
             _writingStream = writingStream;
+            _pool = pool ?? MemoryPool<byte>.Shared;
         }
 
         /// <inheritdoc />
@@ -252,7 +253,7 @@ namespace Microsoft.AspNetCore.Http
             }
 
             // Get a new buffer using the minimum segment size, unless the size hint is larger than a single segment.
-            _currentSegmentOwner = MemoryPool<byte>.Shared.Rent(Math.Max(_minimumSegmentSize, sizeHint));
+            _currentSegmentOwner = _pool.Rent(Math.Max(_minimumSegmentSize, sizeHint));
             _currentSegment = _currentSegmentOwner.Memory;
             _position = 0;
         }
