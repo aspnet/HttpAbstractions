@@ -23,10 +23,8 @@ namespace Microsoft.AspNetCore.Http
         private int _bytesWritten;
 
         private List<CompletedBuffer> _completedSegments;
-        private Memory<byte> _currentSegment;
-        private IMemoryOwner<byte> _currentSegmentOwner;
+        private byte[] _currentSegment;
         private int _position;
-        private MemoryPool<byte> _pool;
 
         private CancellationTokenSource _internalTokenSource;
         private bool _isCompleted;
@@ -44,7 +42,7 @@ namespace Microsoft.AspNetCore.Http
             }
             set { _internalTokenSource = value; }
         }
-
+        
         /// <summary>
         /// Creates a new StreamPipeWrapper 
         /// </summary>
@@ -53,17 +51,16 @@ namespace Microsoft.AspNetCore.Http
         {
         }
 
-        public StreamPipeWriter(Stream writingStream, int minimumSegmentSize, MemoryPool<byte> pool = null)
+        public StreamPipeWriter(Stream writingStream, int minimumSegmentSize)
         {
             _minimumSegmentSize = minimumSegmentSize;
             _writingStream = writingStream;
-            _pool = pool ?? MemoryPool<byte>.Shared;
         }
 
         /// <inheritdoc />
         public override void Advance(int count)
         {
-            if (_currentSegment.IsEmpty) // TODO confirm this
+            if (_currentSegment == null)
             {
                 throw new InvalidOperationException("No writing operation. Make sure GetMemory() was called.");
             }
@@ -84,7 +81,7 @@ namespace Microsoft.AspNetCore.Http
         {
             EnsureCapacity(sizeHint);
 
-            return _currentSegment;
+            return _currentSegment.AsMemory(_position, _currentSegment.Length - _position);
         }
 
         /// <inheritdoc />
@@ -92,7 +89,7 @@ namespace Microsoft.AspNetCore.Http
         {
             EnsureCapacity(sizeHint);
 
-            return _currentSegment.Slice(_position).Span;
+            return _currentSegment.AsSpan(_position, _currentSegment.Length - _position);
         }
 
         /// <inheritdoc />
@@ -123,11 +120,11 @@ namespace Microsoft.AspNetCore.Http
             // Implementing completions/callbacks would require creating a PipeReaderAdapter.
         }
 
-        ///// <inheritdoc />
-        //public override ValueTask<FlushResult> WriteAsync(ReadOnlyMemory<byte> source, CancellationToken cancellationToken = default)
-        //{
-        //    return base.WriteAsync(source, cancellationToken);
-        //}
+        /// <inheritdoc />
+        public override ValueTask<FlushResult> WriteAsync(ReadOnlyMemory<byte> source, CancellationToken cancellationToken = default)
+        {
+            return base.WriteAsync(source, cancellationToken);
+        }
 
         /// <inheritdoc />
         public override ValueTask<FlushResult> FlushAsync(CancellationToken cancellationToken = default)
@@ -174,31 +171,16 @@ namespace Microsoft.AspNetCore.Http
                     for (var i = 0; i < count; i++)
                     {
                         var segment = _completedSegments[i];
-#if NETCOREAPP2_2
-                        // TODO this should be on dotnet core 2.1 to allow better writing apis
-                        await _writingStream.WriteAsync(segment.Buffer.Slice(0, segment.Length), token);
-#elif NETSTANDARD2_0
-                        await _writingStream.WriteAsync(segment.Buffer.ToArray(), 0, segment.Length, token);
+                        await _writingStream.WriteAsync(segment.Buffer, 0, segment.Length, token);
                         segment.Return();
-#else
-#error Target frameworks need to be updated.
-#endif
                     }
 
                     _completedSegments.Clear();
                 }
 
-                if (!_currentSegment.IsEmpty)
+                if (_currentSegment != null)
                 {
-#if NETCOREAPP2_2
-                    // TODO this should be on dotnet core 2.1 to allow better writing apis
-                    await _writingStream.WriteAsync(_currentSegment.Slice(0, _position), token);
-#elif NETSTANDARD2_0
-                    // TODO this should be on dotnet core 2.1 to allow better writing apis
-                    await _writingStream.WriteAsync(_currentSegment.ToArray(), 0, _position, token);
-#else
-#error Target frameworks need to be updated.
-#endif
+                    await _writingStream.WriteAsync(_currentSegment, 0, _position, token);
                 }
 
                 await _writingStream.FlushAsync(token);
@@ -220,7 +202,7 @@ namespace Microsoft.AspNetCore.Http
         {
             // This does the Right Thing. It only subtracts _position from the current segment length if it's non-null.
             // If _currentSegment is null, it returns 0.
-            var remainingSize = _currentSegment.Length - _position;
+            var remainingSize = _currentSegment?.Length - _position ?? 0;
 
             // If the sizeHint is 0, any capacity will do
             // Otherwise, the buffer must have enough space for the entire size hint, or we need to add a segment.
@@ -235,7 +217,7 @@ namespace Microsoft.AspNetCore.Http
 
         private void AddSegment(int sizeHint = 0)
         {
-            if (_currentSegment.Length != 0)
+            if (_currentSegment != null)
             {
                 // We're adding a segment to the list
                 if (_completedSegments == null)
@@ -246,14 +228,11 @@ namespace Microsoft.AspNetCore.Http
                 // Position might be less than the segment length if there wasn't enough space to satisfy the sizeHint when
                 // GetMemory was called. In that case we'll take the current segment and call it "completed", but need to
                 // ignore any empty space in it.
-                _completedSegments.Add(new CompletedBuffer(_currentSegmentOwner, _position));
+                _completedSegments.Add(new CompletedBuffer(_currentSegment, _position));
             }
 
             // Get a new buffer using the minimum segment size, unless the size hint is larger than a single segment.
-            var size = Math.Max(_minimumSegmentSize, sizeHint);
-            _currentSegmentOwner = _pool?.Rent(size);
-            _currentSegment = _currentSegmentOwner.Memory;
-            //?? ArrayPool<byte>.Shared.Rent(size);
+            _currentSegment = ArrayPool<byte>.Shared.Rent(Math.Max(_minimumSegmentSize, sizeHint));
             _position = 0;
         }
 
@@ -289,23 +268,20 @@ namespace Microsoft.AspNetCore.Http
         /// </summary>
         private readonly struct CompletedBuffer
         {
-            public Memory<byte> Buffer { get; }
+            public byte[] Buffer { get; }
             public int Length { get; }
 
-            public ReadOnlySpan<byte> Span => Buffer.Span;
+            public ReadOnlySpan<byte> Span => Buffer.AsSpan(0, Length);
 
-            private readonly IMemoryOwner<byte> _memoryOwner;
-
-            public CompletedBuffer(IMemoryOwner<byte> buffer, int length)
+            public CompletedBuffer(byte[] buffer, int length)
             {
-                Buffer = buffer.Memory;
+                Buffer = buffer;
                 Length = length;
-                _memoryOwner = buffer;
             }
 
             public void Return()
             {
-                _memoryOwner.Dispose();
+                ArrayPool<byte>.Shared.Return(Buffer);
             }
         }
     }
