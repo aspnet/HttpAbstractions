@@ -32,15 +32,20 @@ namespace Microsoft.AspNetCore.Http
         private bool _isCompleted;
         private ExceptionDispatchInfo _exceptionInfo;
 
+        private object lockObject = new object();
+
         private CancellationTokenSource InternalTokenSource
         {
             get
             {
-                if (_internalTokenSource == null)
+                lock (lockObject)
                 {
-                    _internalTokenSource = new CancellationTokenSource();
+                    if (_internalTokenSource == null)
+                    {
+                        _internalTokenSource = new CancellationTokenSource();
+                    }
+                    return _internalTokenSource;
                 }
-                return _internalTokenSource;
             }
         }
 
@@ -130,6 +135,11 @@ namespace Microsoft.AspNetCore.Http
         /// <inheritdoc />
         public override ValueTask<FlushResult> FlushAsync(CancellationToken cancellationToken = default)
         {
+            if (_bytesWritten == 0)
+            {
+                return new ValueTask<FlushResult>(new FlushResult(isCanceled: false, IsCompletedOrThrow()));
+            }
+
             return FlushAsyncInternal(cancellationToken);
         }
 
@@ -140,38 +150,13 @@ namespace Microsoft.AspNetCore.Http
 
         private async ValueTask<FlushResult> FlushAsyncInternal(CancellationToken cancellationToken = default)
         {
-            if (_bytesWritten == 0)
-            {
-                return new FlushResult(isCanceled: false, IsCompletedOrThrow());
-            }
-
             CancellationTokenRegistration reg;
             if (cancellationToken.CanBeCanceled)
             {
                 reg = cancellationToken.Register(state => ((StreamPipeWriter)state).Cancel(), this);
-                using (reg)
-                {
-                    try
-                    {
-                        return await WriteAndFlushAsync();
-                    }
-                    catch (OperationCanceledException ex)
-                    {
-                        // Remove the cancellation token such that the next time Flush is called
-                        // A new CTS is created.
-                        Interlocked.Exchange(ref _internalTokenSource, null);
-
-                        if  (cancellationToken.IsCancellationRequested)
-                        {
-                            throw ex;
-                        }
-
-                        // Catch any cancellation and translate it into setting isCanceled = true
-                        return new FlushResult(isCanceled: true, IsCompletedOrThrow());
-                    }
-                }
             }
-            else
+
+            using (reg)
             {
                 try
                 {
@@ -181,7 +166,15 @@ namespace Microsoft.AspNetCore.Http
                 {
                     // Remove the cancellation token such that the next time Flush is called
                     // A new CTS is created.
-                    Interlocked.Exchange(ref _internalTokenSource, null);
+                    lock (lockObject)
+                    {
+                        _internalTokenSource = null;
+                    }
+
+                    if (cancellationToken.IsCancellationRequested)
+                    {
+                        throw;
+                    }
 
                     // Catch any cancellation and translate it into setting isCanceled = true
                     return new FlushResult(isCanceled: true, IsCompletedOrThrow());
