@@ -29,6 +29,11 @@ namespace Microsoft.AspNetCore.Http.Tests
         public byte[] Read()
         {
             Writer.FlushAsync().GetAwaiter().GetResult();
+            return ReadWithoutFlush();
+        }
+
+        public byte[] ReadWithoutFlush()
+        {
             MemoryStream.Position = 0;
             var buffer = new byte[MemoryStream.Length];
             var result = MemoryStream.Read(buffer, 0, (int)MemoryStream.Length);

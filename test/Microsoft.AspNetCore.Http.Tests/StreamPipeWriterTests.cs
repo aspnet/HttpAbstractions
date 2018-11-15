@@ -3,11 +3,8 @@
 
 using System;
 using System.Buffers;
-using System.Collections.Generic;
 using System.IO;
 using System.IO.Pipelines;
-using System.Linq;
-using System.Runtime.CompilerServices;
 using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
@@ -147,7 +144,7 @@ namespace Microsoft.AspNetCore.Http.Tests
         }
 
         [Fact]
-        public async Task CancellationBetweenWritesAllDataIsPreserved()
+        public async Task CancelPendingFlushBetweenWritesAllDataIsPreserved()
         {
             MemoryStream = new SingleWriteStream();
             Writer = new StreamPipeWriter(MemoryStream);
@@ -185,12 +182,11 @@ namespace Microsoft.AspNetCore.Http.Tests
         }
 
         [Fact]
-        public async Task CancellationBetweenWritesAllDataIsPreservedMultipleSegments()
+        public async Task CancelPendingFlushAfterAllWritesAllDataIsPreserved()
         {
-            MemoryStream = new SingleWriteStream();
-            Writer = new StreamPipeWriter(MemoryStream, minimumSegmentSize: 16);
+            MemoryStream = new CannotFlushStream();
+            Writer = new StreamPipeWriter(MemoryStream);
             FlushResult flushResult = new FlushResult();
-            var expectedData = Encoding.ASCII.GetBytes(new string('a', 16));
 
             var e = new ManualResetEventSlim();
 
@@ -200,17 +196,9 @@ namespace Microsoft.AspNetCore.Http.Tests
                 {
                     // Create two Segments
                     // First one will succeed to write, other one will hang.
-                    var memory = Writer.GetMemory(16);
-                    expectedData.CopyTo(memory);
-                    Writer.Advance(16);
-
-                    memory = Writer.GetMemory(16);
-                    expectedData.CopyTo(memory);
-                    Writer.Advance(16);
-
-                    var flushTask = Writer.FlushAsync();
+                    var writingTask = Writer.WriteAsync(Encoding.ASCII.GetBytes("data"));
                     e.Set();
-                    flushResult = await flushTask;
+                    flushResult = await writingTask;
                 }
                 catch (Exception ex)
                 {
@@ -226,17 +214,64 @@ namespace Microsoft.AspNetCore.Http.Tests
             await task;
 
             Assert.True(flushResult.IsCanceled);
-
-            MemoryStream.Position = 0;
-            var buffer = new byte[MemoryStream.Length];
-            var result = MemoryStream.Read(buffer, 0, (int)MemoryStream.Length);
-
-            Assert.Equal(expectedData, buffer);
-
-            Assert.Equal(Encoding.ASCII.GetBytes(new string('a', 32)), Read()); // Read calls Flush
         }
 
-       
+        [Fact]
+        public async Task CancelPendingFlushLostOfCancellationsNoDataLost()
+        {
+            var writeSize = 16;
+            var singleWriteStream = new SingleWriteStream();
+            MemoryStream = singleWriteStream;
+            Writer = new StreamPipeWriter(MemoryStream, minimumSegmentSize: writeSize);
+
+            for (var i = 0; i < 10; i++)
+            {
+                FlushResult flushResult = new FlushResult();
+                var expectedData = Encoding.ASCII.GetBytes(new string('a', writeSize));
+
+                var e = new ManualResetEventSlim();
+
+                var task = Task.Run(async () =>
+                {
+                    try
+                    {
+                        // Create two Segments
+                        // First one will succeed to write, other one will hang.
+                        for (var j = 0; j < 2; j++)
+                        {
+                            var memory = Writer.GetMemory();
+                            expectedData.CopyTo(memory);
+                            Writer.Advance(writeSize);
+                        }
+
+                        var flushTask = Writer.FlushAsync();
+                        e.Set();
+                        flushResult = await flushTask;
+                    }
+                    catch (Exception ex)
+                    {
+                        Console.WriteLine(ex.Message);
+                        throw ex;
+                    }
+                });
+
+                e.Wait();
+
+                Writer.CancelPendingFlush();
+
+                await task;
+
+                Assert.True(flushResult.IsCanceled);
+            }
+
+            // Only half of the data was written because every other flush failed.
+            Assert.Equal(16 * 10, ReadWithoutFlush().Length);
+
+            // Start allowing all writes to make read succeed.
+            singleWriteStream.AllowAllWrites = true;
+
+            Assert.Equal(16 * 10 * 2, Read().Length);
+        }
 
         private async Task CheckWriteIsNotCanceled()
         {
@@ -286,13 +321,15 @@ namespace Microsoft.AspNetCore.Http.Tests
     {
         private bool _shouldNextWriteFail;
 
+        public bool AllowAllWrites { get; set; }
+
 
 #if NETCOREAPP2_2
         public override async ValueTask WriteAsync(ReadOnlyMemory<byte> source, CancellationToken cancellationToken = default)
         {
             try
             {
-                if (_shouldNextWriteFail)
+                if (_shouldNextWriteFail && !AllowAllWrites)
                 {
                     await Task.Delay(30000, cancellationToken);
                 }
@@ -312,7 +349,7 @@ namespace Microsoft.AspNetCore.Http.Tests
         {
             try
             {
-                if (_shouldNextWriteFail)
+                if (_shouldNextWriteFail && !AllowAllWrites)
                 {
                     await Task.Delay(30000, cancellationToken);
                 }
@@ -322,6 +359,14 @@ namespace Microsoft.AspNetCore.Http.Tests
             {
                 _shouldNextWriteFail = !_shouldNextWriteFail;
             }
+        }
+    }
+
+    internal class CannotFlushStream : MemoryStream
+    {
+        public override async Task FlushAsync(CancellationToken cancellationToken)
+        {
+            await Task.Delay(30000, cancellationToken);
         }
     }
 

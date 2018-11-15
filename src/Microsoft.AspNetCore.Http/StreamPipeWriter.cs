@@ -8,7 +8,6 @@ using System.IO;
 using System.IO.Pipelines;
 using System.Runtime.CompilerServices;
 using System.Runtime.ExceptionServices;
-using System.Runtime.InteropServices;
 using System.Threading;
 using System.Threading.Tasks;
 
@@ -127,12 +126,6 @@ namespace Microsoft.AspNetCore.Http
         }
 
         /// <inheritdoc />
-        public override ValueTask<FlushResult> WriteAsync(ReadOnlyMemory<byte> source, CancellationToken cancellationToken = default)
-        {
-            return base.WriteAsync(source, cancellationToken);
-        }
-
-        /// <inheritdoc />
         public override ValueTask<FlushResult> FlushAsync(CancellationToken cancellationToken = default)
         {
             if (_bytesWritten == 0)
@@ -150,7 +143,7 @@ namespace Microsoft.AspNetCore.Http
 
         private async ValueTask<FlushResult> FlushAsyncInternal(CancellationToken cancellationToken = default)
         {
-            CancellationTokenRegistration reg;
+            CancellationTokenRegistration reg = new CancellationTokenRegistration();
             if (cancellationToken.CanBeCanceled)
             {
                 reg = cancellationToken.Register(state => ((StreamPipeWriter)state).Cancel(), this);
