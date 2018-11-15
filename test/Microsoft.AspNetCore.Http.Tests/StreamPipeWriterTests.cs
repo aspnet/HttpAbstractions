@@ -72,14 +72,14 @@ namespace Microsoft.AspNetCore.Http.Tests
             var pipeWriter = new StreamPipeWriter(new HangingStream());
             FlushResult flushResult = new FlushResult();
 
-            var e = new ManualResetEventSlim();
+            var tcs = new TaskCompletionSource<int>(TaskCreationOptions.RunContinuationsAsynchronously);
 
             var task = Task.Run(async () =>
             {
                 try
                 {
                     var writingTask = pipeWriter.WriteAsync(Encoding.ASCII.GetBytes("data"));
-                    e.Set();
+                    tcs.SetResult(0);
                     flushResult = await writingTask;
                 }
                 catch (Exception ex)
@@ -89,7 +89,7 @@ namespace Microsoft.AspNetCore.Http.Tests
                 }
             });
 
-            e.Wait();
+            await tcs.Task;
 
             pipeWriter.CancelPendingFlush();
 
@@ -150,7 +150,7 @@ namespace Microsoft.AspNetCore.Http.Tests
             Writer = new StreamPipeWriter(MemoryStream);
             FlushResult flushResult = new FlushResult();
 
-            var e = new ManualResetEventSlim();
+            var tcs = new TaskCompletionSource<int>(TaskCreationOptions.RunContinuationsAsynchronously);
 
             var task = Task.Run(async () =>
             {
@@ -159,7 +159,7 @@ namespace Microsoft.AspNetCore.Http.Tests
                     await Writer.WriteAsync(Encoding.ASCII.GetBytes("data"));
 
                     var writingTask = Writer.WriteAsync(Encoding.ASCII.GetBytes(" data"));
-                    e.Set();
+                    tcs.SetResult(0);
                     flushResult = await writingTask;
                 }
                 catch (Exception ex)
@@ -169,7 +169,7 @@ namespace Microsoft.AspNetCore.Http.Tests
                 }
             });
 
-            e.Wait();
+            await tcs.Task;
 
             Writer.CancelPendingFlush();
 
@@ -188,7 +188,7 @@ namespace Microsoft.AspNetCore.Http.Tests
             Writer = new StreamPipeWriter(MemoryStream);
             FlushResult flushResult = new FlushResult();
 
-            var e = new ManualResetEventSlim();
+            var tcs = new TaskCompletionSource<int>(TaskCreationOptions.RunContinuationsAsynchronously);
 
             var task = Task.Run(async () =>
             {
@@ -197,7 +197,7 @@ namespace Microsoft.AspNetCore.Http.Tests
                     // Create two Segments
                     // First one will succeed to write, other one will hang.
                     var writingTask = Writer.WriteAsync(Encoding.ASCII.GetBytes("data"));
-                    e.Set();
+                    tcs.SetResult(0);
                     flushResult = await writingTask;
                 }
                 catch (Exception ex)
@@ -207,7 +207,7 @@ namespace Microsoft.AspNetCore.Http.Tests
                 }
             });
 
-            e.Wait();
+            await tcs.Task;
 
             Writer.CancelPendingFlush();
 
@@ -229,7 +229,8 @@ namespace Microsoft.AspNetCore.Http.Tests
                 FlushResult flushResult = new FlushResult();
                 var expectedData = Encoding.ASCII.GetBytes(new string('a', writeSize));
 
-                var e = new ManualResetEventSlim();
+                var tcs = new TaskCompletionSource<int>(TaskCreationOptions.RunContinuationsAsynchronously);
+                // TaskCreationOptions.RunAsync
 
                 var task = Task.Run(async () =>
                 {
@@ -239,13 +240,11 @@ namespace Microsoft.AspNetCore.Http.Tests
                         // First one will succeed to write, other one will hang.
                         for (var j = 0; j < 2; j++)
                         {
-                            var memory = Writer.GetMemory();
-                            expectedData.CopyTo(memory);
-                            Writer.Advance(writeSize);
+                            Writer.Write(expectedData);
                         }
 
                         var flushTask = Writer.FlushAsync();
-                        e.Set();
+                        tcs.SetResult(0);
                         flushResult = await flushTask;
                     }
                     catch (Exception ex)
@@ -255,7 +254,7 @@ namespace Microsoft.AspNetCore.Http.Tests
                     }
                 });
 
-                e.Wait();
+                await tcs.Task;
 
                 Writer.CancelPendingFlush();
 
