@@ -41,7 +41,6 @@ namespace Microsoft.AspNetCore.Http
                 }
                 return _internalTokenSource;
             }
-            set { _internalTokenSource = value; }
         }
 
         /// <summary>
@@ -96,7 +95,7 @@ namespace Microsoft.AspNetCore.Http
         /// <inheritdoc />
         public override void CancelPendingFlush()
         {
-            InternalTokenSource?.Cancel();
+            Cancel();
         }
 
         /// <inheritdoc />
@@ -133,6 +132,11 @@ namespace Microsoft.AspNetCore.Http
             return FlushAsyncInternal(cancellationToken);
         }
 
+        private void Cancel()
+        {
+            InternalTokenSource.Cancel();
+        }
+
         private async ValueTask<FlushResult> FlushAsyncInternal(CancellationToken cancellationToken = default)
         {
             if (_bytesWritten == 0)
@@ -140,28 +144,32 @@ namespace Microsoft.AspNetCore.Http
                 return new FlushResult(isCanceled: false, IsCompletedOrThrow());
             }
 
-            // Wrap the provided cancellationToken with an internal one
-            // to allow CancelPendingFlush to cancel writes and flushes
-            if (InternalTokenSource.IsCancellationRequested)
+            try
             {
-                // If CancelPendingFlush was already called, we need to return a FlushResult with
-                // Canceled. At this point, we create a fresh CTS that isn't canceled.
-                // PERF: we only create a new CTS if the previous one wasn't canceled.
-                // Otherwise, we would need to create a new CTS for every call to FlushAsync.
-                var result = new FlushResult(isCanceled: true, IsCompletedOrThrow());
-                InternalTokenSource = new CancellationTokenSource();
-                return result;
-            }
+                CancellationTokenRegistration reg;
+                if (cancellationToken.CanBeCanceled)
+                {
+                    reg = cancellationToken.Register(state => ((StreamPipeWriter)state).Cancel(), this);
+                    using (reg)
+                    {
+                        return await WriteAndFlushAsync();
 
-            var token = InternalTokenSource.Token;
-            if (cancellationToken != CancellationToken.None)
+                    }
+                }
+                else
+                {
+                    return await WriteAndFlushAsync();
+                }
+            }
+            finally
             {
-                // PERF: only link token sources if FlushAsync was provided a cancellation token.
-                token = CancellationTokenSource.CreateLinkedTokenSource(
-                    cancellationToken,
-                    InternalTokenSource.Token).Token;
+                _bytesWritten = 0;
+                _position = 0;
             }
+        }
 
+        private async ValueTask<FlushResult> WriteAndFlushAsync()
+        {
             try
             {
                 // Write all completed segments and whatever remains in the current segment
@@ -173,9 +181,9 @@ namespace Microsoft.AspNetCore.Http
                     {
                         var segment = _completedSegments[i];
 #if NETCOREAPP2_2
-                        await _writingStream.WriteAsync(segment.Buffer.Slice(0, segment.Length), token);
+                        await _writingStream.WriteAsync(segment.Buffer.Slice(0, segment.Length), InternalTokenSource.Token);
 #elif NETSTANDARD2_0
-                        await _writingStream.WriteAsync(segment.Buffer.ToArray(), 0, segment.Length, token);
+                        await _writingStream.WriteAsync(segment.Buffer.ToArray(), 0, segment.Length, InternalTokenSource.Token);
 #else
 #error Target frameworks need to be updated.
 #endif
@@ -188,25 +196,25 @@ namespace Microsoft.AspNetCore.Http
                 if (!_currentSegment.IsEmpty)
                 {
 #if NETCOREAPP2_2
-                    await _writingStream.WriteAsync(_currentSegment.Slice(0, _position), token);
+                    await _writingStream.WriteAsync(_currentSegment.Slice(0, _position), InternalTokenSource.Token);
 #elif NETSTANDARD2_0
-                    await _writingStream.WriteAsync(_currentSegment.ToArray(), 0, _position, token);
+                    await _writingStream.WriteAsync(_currentSegment.ToArray(), 0, _position, InternalTokenSource.Token);
 #else
 #error Target frameworks need to be updated.
 #endif
                 }
 
-                await _writingStream.FlushAsync(token);
+                await _writingStream.FlushAsync(_internalTokenSource.Token);
             }
             catch (OperationCanceledException)
             {
+                // Remove the cancellation token such that the next time Flush is called
+                // A new CTS is created.
+                Interlocked.Exchange(ref _internalTokenSource, null);
+
                 // Catch any cancellation and translate it into setting isCanceled = true
                 return new FlushResult(isCanceled: true, IsCompletedOrThrow());
             }
-
-            // After writing to the stream, we can return all ArrayPool segments that are completed.
-            _bytesWritten = 0;
-            _position = 0;
 
             return new FlushResult(isCanceled: false, IsCompletedOrThrow());
         }
