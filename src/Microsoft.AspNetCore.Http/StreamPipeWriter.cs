@@ -8,6 +8,7 @@ using System.IO;
 using System.IO.Pipelines;
 using System.Runtime.CompilerServices;
 using System.Runtime.ExceptionServices;
+using System.Runtime.InteropServices;
 using System.Threading;
 using System.Threading.Tasks;
 
@@ -89,7 +90,7 @@ namespace Microsoft.AspNetCore.Http
         {
             EnsureCapacity(sizeHint);
 
-            return _currentSegment.Slice(_position).Span;
+            return _currentSegment.Span.Slice(_position);
         }
 
         /// <inheritdoc />
@@ -144,77 +145,89 @@ namespace Microsoft.AspNetCore.Http
                 return new FlushResult(isCanceled: false, IsCompletedOrThrow());
             }
 
-            try
+            CancellationTokenRegistration reg;
+            if (cancellationToken.CanBeCanceled)
             {
-                CancellationTokenRegistration reg;
-                if (cancellationToken.CanBeCanceled)
+                reg = cancellationToken.Register(state => ((StreamPipeWriter)state).Cancel(), this);
+                using (reg)
                 {
-                    reg = cancellationToken.Register(state => ((StreamPipeWriter)state).Cancel(), this);
-                    using (reg)
+                    try
                     {
                         return await WriteAndFlushAsync();
+                    }
+                    catch (OperationCanceledException ex)
+                    {
+                        // Remove the cancellation token such that the next time Flush is called
+                        // A new CTS is created.
+                        Interlocked.Exchange(ref _internalTokenSource, null);
 
+                        if  (cancellationToken.IsCancellationRequested)
+                        {
+                            throw ex;
+                        }
+
+                        // Catch any cancellation and translate it into setting isCanceled = true
+                        return new FlushResult(isCanceled: true, IsCompletedOrThrow());
                     }
                 }
-                else
+            }
+            else
+            {
+                try
                 {
                     return await WriteAndFlushAsync();
                 }
-            }
-            finally
-            {
-                _bytesWritten = 0;
-                _position = 0;
+                catch (OperationCanceledException)
+                {
+                    // Remove the cancellation token such that the next time Flush is called
+                    // A new CTS is created.
+                    Interlocked.Exchange(ref _internalTokenSource, null);
+
+                    // Catch any cancellation and translate it into setting isCanceled = true
+                    return new FlushResult(isCanceled: true, IsCompletedOrThrow());
+                }
             }
         }
 
         private async ValueTask<FlushResult> WriteAndFlushAsync()
         {
-            try
+            // Write all completed segments and whatever remains in the current segment
+            // and flush the result.
+            if (_completedSegments != null && _completedSegments.Count > 0)
             {
-                // Write all completed segments and whatever remains in the current segment
-                // and flush the result.
-                if (_completedSegments != null && _completedSegments.Count > 0)
+                var count = _completedSegments.Count;
+                for (var i = 0; i < count; i++)
                 {
-                    var count = _completedSegments.Count;
-                    for (var i = 0; i < count; i++)
-                    {
-                        var segment = _completedSegments[i];
+                    var segment = _completedSegments[0];
 #if NETCOREAPP2_2
-                        await _writingStream.WriteAsync(segment.Buffer.Slice(0, segment.Length), InternalTokenSource.Token);
+                    await _writingStream.WriteAsync(segment.Buffer.Slice(0, segment.Length), InternalTokenSource.Token);
 #elif NETSTANDARD2_0
-                        await _writingStream.WriteAsync(segment.Buffer.ToArray(), 0, segment.Length, InternalTokenSource.Token);
+                    MemoryMarshal.TryGetArray<byte>(segment.Buffer, out var arraySegment);
+                    await _writingStream.WriteAsync(arraySegment.Array, 0, segment.Length, InternalTokenSource.Token);
 #else
 #error Target frameworks need to be updated.
 #endif
-                        segment.Return();
-                    }
-
-                    _completedSegments.Clear();
+                    _bytesWritten -= segment.Length;
+                    segment.Return();
+                    _completedSegments.RemoveAt(0);
                 }
+            }
 
-                if (!_currentSegment.IsEmpty)
-                {
+            if (!_currentSegment.IsEmpty)
+            {
 #if NETCOREAPP2_2
-                    await _writingStream.WriteAsync(_currentSegment.Slice(0, _position), InternalTokenSource.Token);
+                await _writingStream.WriteAsync(_currentSegment.Slice(0, _position), InternalTokenSource.Token);
 #elif NETSTANDARD2_0
-                    await _writingStream.WriteAsync(_currentSegment.ToArray(), 0, _position, InternalTokenSource.Token);
+                MemoryMarshal.TryGetArray<byte>(_currentSegment, out var arraySegment);
+                await _writingStream.WriteAsync(arraySegment.Array, 0, _position, InternalTokenSource.Token);
 #else
 #error Target frameworks need to be updated.
 #endif
-                }
-
-                await _writingStream.FlushAsync(_internalTokenSource.Token);
+                _bytesWritten -= _position;
+                _position = 0;
             }
-            catch (OperationCanceledException)
-            {
-                // Remove the cancellation token such that the next time Flush is called
-                // A new CTS is created.
-                Interlocked.Exchange(ref _internalTokenSource, null);
 
-                // Catch any cancellation and translate it into setting isCanceled = true
-                return new FlushResult(isCanceled: true, IsCompletedOrThrow());
-            }
+            await _writingStream.FlushAsync(_internalTokenSource.Token);
 
             return new FlushResult(isCanceled: false, IsCompletedOrThrow());
         }

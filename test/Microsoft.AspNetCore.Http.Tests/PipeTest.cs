@@ -11,21 +11,28 @@ namespace Microsoft.AspNetCore.Http.Tests
     {
         protected const int MaximumSizeHigh = 65;
 
-        protected TestAdaptedPipe Pipe;
-
         public MemoryStream MemoryStream { get; set; }
 
-        public PipeWriter Writer => Pipe.Writer;
+        public PipeWriter Writer { get; set; }
 
         protected PipeTest()
         {
             MemoryStream = new MemoryStream();
-            Pipe = new TestAdaptedPipe(null /* TODO add PipeReaderAdapter here */ , new StreamPipeWriter(MemoryStream));
+            Writer = new StreamPipeWriter(MemoryStream);
         }
 
         public void Dispose()
         {
-            Pipe.Writer.Complete();
+            Writer.Complete();
+        }
+
+        public byte[] Read()
+        {
+            Writer.FlushAsync().GetAwaiter().GetResult();
+            MemoryStream.Position = 0;
+            var buffer = new byte[MemoryStream.Length];
+            var result = MemoryStream.Read(buffer, 0, (int)MemoryStream.Length);
+            return buffer;
         }
     }
 }

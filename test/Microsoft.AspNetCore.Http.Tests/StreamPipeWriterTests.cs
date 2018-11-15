@@ -15,126 +15,8 @@ using Xunit;
 
 namespace Microsoft.AspNetCore.Http.Tests
 {
-    public class PipeWriterTests : PipeTest
+    public class StreamPipeWriterTests : PipeTest
     {
-        [Theory]
-        [InlineData(3, -1, 0)]
-        [InlineData(3, 0, -1)]
-        [InlineData(3, 0, 4)]
-        [InlineData(3, 4, 0)]
-        [InlineData(3, -1, -1)]
-        [InlineData(3, 4, 4)]
-        public void ThrowsForInvalidParameters(int arrayLength, int offset, int length)
-        {
-            var array = new byte[arrayLength];
-            for (var i = 0; i < array.Length; i++)
-            {
-                array[i] = (byte)(i + 1);
-            }
-
-            Writer.Write(new Span<byte>(array, 0, 0));
-            Writer.Write(new Span<byte>(array, array.Length, 0));
-
-            try
-            {
-                Writer.Write(new Span<byte>(array, offset, length));
-                Assert.True(false);
-            }
-            catch (Exception ex)
-            {
-                Assert.True(ex is ArgumentOutOfRangeException);
-            }
-
-            Writer.Write(new Span<byte>(array, 0, array.Length));
-            Assert.Equal(array, Read());
-        }
-
-        [Theory]
-        [InlineData(0, 3)]
-        [InlineData(1, 2)]
-        [InlineData(2, 1)]
-        [InlineData(1, 1)]
-        public void CanWriteWithOffsetAndLength(int offset, int length)
-        {
-            var array = new byte[] { 1, 2, 3 };
-
-            Writer.Write(new Span<byte>(array, offset, length));
-
-            Assert.Equal(array.Skip(offset).Take(length).ToArray(), Read());
-        }
-
-        [Fact]
-        public void CanWriteIntoHeadlessBuffer()
-        {
-
-            Writer.Write(new byte[] { 1, 2, 3 });
-            Assert.Equal(new byte[] { 1, 2, 3 }, Read());
-        }
-
-        [Fact]
-        public void CanGetNewMemoryWhenSizeTooLarge()
-        {
-            var memory = Writer.GetMemory(0);
-
-            var memoryLarge = Writer.GetMemory(8000);
-
-            Assert.NotEqual(memory, memoryLarge);
-        }
-
-        [Fact]
-        public void CanGetSameMemoryWhenNoAdvance()
-        {
-            var memory = Writer.GetMemory(0);
-
-            var secondMemory = Writer.GetMemory(0);
-
-            Assert.Equal(memory, secondMemory);
-        }
-
-        [Fact]
-        public void CanGetNewSpanWhenNoAdvanceWhenSizeTooLarge()
-        {
-            var span = Writer.GetSpan(0);
-
-            var secondSpan = Writer.GetSpan(8000);
-
-            Assert.False(span.SequenceEqual(secondSpan));
-        }
-
-        [Fact]
-        public void CanGetSameSpanWhenNoAdvance()
-        {
-            var span = Writer.GetSpan(0);
-
-            var secondSpan = Writer.GetSpan(0);
-
-            Assert.True(span.SequenceEqual(secondSpan));
-        }
-
-        [Theory]
-        [InlineData(16, 32, 32)]
-        [InlineData(16, 16, 16)]
-        [InlineData(64, 32, 64)]
-        [InlineData(40, 32, 64)] // memory sizes are powers of 2.
-        public void CheckMinimumSegmentSizeWithGetMemory(int minimumSegmentSize, int getMemorySize, int expectedSize)
-        {
-            var writer = new StreamPipeWriter(new MemoryStream(), minimumSegmentSize);
-            var memory = writer.GetMemory(getMemorySize);
-
-            Assert.Equal(expectedSize, memory.Length);
-        }
-
-        [Fact]
-        public void CanWriteMultipleTimes()
-        {
-
-            Writer.Write(new byte[] { 1 });
-            Writer.Write(new byte[] { 2 });
-            Writer.Write(new byte[] { 3 });
-
-            Assert.Equal(new byte[] { 1, 2, 3 }, Read());
-        }
-
         [Fact]
         public async Task CanWriteAsyncMultipleTimesIntoSameBlock()
         {
@@ -170,91 +52,6 @@ namespace Microsoft.AspNetCore.Http.Tests
         }
 
         [Fact]
-        public void CanWriteOverTheBlockLength()
-        {
-            Memory<byte> memory = Writer.GetMemory();
-
-            IEnumerable<byte> source = Enumerable.Range(0, memory.Length).Select(i => (byte)i);
-            byte[] expectedBytes = source.Concat(source).Concat(source).ToArray();
-
-            Writer.Write(expectedBytes);
-
-            Assert.Equal(expectedBytes, Read());
-        }
-
-        [Fact]
-        public void EnsureAllocatesSpan()
-        {
-            var span = Writer.GetSpan(10);
-
-            Assert.True(span.Length >= 10);
-            // 0 byte Flush would not complete the reader so we complete.
-            Writer.Complete();
-            Assert.Equal(new byte[] { }, Read());
-        }
-
-        [Fact]
-        public void SlicesSpanAndAdvancesAfterWrite()
-        {
-            int initialLength = Writer.GetSpan(3).Length;
-
-
-            Writer.Write(new byte[] { 1, 2, 3 });
-            Span<byte> span = Writer.GetSpan();
-
-            Assert.Equal(initialLength - 3, span.Length);
-            Assert.Equal(new byte[] { 1, 2, 3 }, Read());
-        }
-
-        [Theory]
-        [InlineData(5)]
-        [InlineData(50)]
-        [InlineData(500)]
-        [InlineData(5000)]
-        [InlineData(50000)]
-        public async Task WriteLargeDataBinary(int length)
-        {
-            var data = new byte[length];
-            new Random(length).NextBytes(data);
-            PipeWriter output = Writer;
-            output.Write(data);
-            await output.FlushAsync();
-
-            var input = Read();
-            Assert.Equal(data, input.ToArray());
-        }
-
-        [Fact]
-        public async Task CanWriteNothingToBuffer()
-        {
-            Writer.GetMemory(0);
-            Writer.Advance(0); // doing nothing, the hard way
-            await Writer.FlushAsync();
-        }
-
-        [Fact]
-        public void EmptyWriteDoesNotThrow()
-        {
-            Writer.Write(new byte[0]);
-        }
-
-        [Fact]
-        public void ThrowsOnAdvanceOverMemorySize()
-        {
-            Memory<byte> buffer = Writer.GetMemory(1);
-            var exception = Assert.Throws<InvalidOperationException>(() => Writer.Advance(buffer.Length + 1));
-            Assert.Equal("Can't advance past buffer size.", exception.Message);
-        }
-
-        [Fact]
-        public void ThrowsOnAdvanceWithNoMemory()
-        {
-            PipeWriter buffer = Writer;
-            var exception = Assert.Throws<InvalidOperationException>(() => buffer.Advance(1));
-            Assert.Equal("No writing operation. Make sure GetMemory() was called.", exception.Message);
-        }
-
-        [Fact]
         public async Task ThrowsOnCompleteAndWrite()
         {
             PipeWriter buffer = Writer;
@@ -269,8 +66,7 @@ namespace Microsoft.AspNetCore.Http.Tests
         {
             var pipeWriter = new StreamPipeWriter(new HangingStream());
             var cts = new CancellationTokenSource(1);
-            var flushResult = await pipeWriter.WriteAsync(Encoding.ASCII.GetBytes("data"), cts.Token);
-            Assert.True(flushResult.IsCanceled);
+            await Assert.ThrowsAsync<TaskCanceledException>(async () => await pipeWriter.WriteAsync(Encoding.ASCII.GetBytes("data"), cts.Token));
         }
 
         [Fact]
@@ -303,44 +99,6 @@ namespace Microsoft.AspNetCore.Http.Tests
             await task;
 
             Assert.True(flushResult.IsCanceled);
-        }
-
-        [Fact]
-        public void FlushAsyncCancellationDeadlock()
-        {
-            var cts = new CancellationTokenSource();
-            var cts2 = new CancellationTokenSource();
-
-            PipeWriter buffer = Writer.WriteEmpty(MaximumSizeHigh);
-
-            var e = new ManualResetEventSlim();
-
-            ValueTaskAwaiter<FlushResult> awaiter = buffer.FlushAsync(cts.Token).GetAwaiter();
-            awaiter.OnCompleted(
-                () => {
-                    // We are on cancellation thread and need to wait until another FlushAsync call
-                    // takes pipe state lock
-                    e.Wait();
-
-                    // Make sure we had enough time to reach _cancellationTokenRegistration.Dispose
-                    Thread.Sleep(100);
-
-                    // Try to take pipe state lock
-                    buffer.FlushAsync();
-                });
-
-            // Start a thread that would run cancellation callbacks
-            Task cancellationTask = Task.Run(() => cts.Cancel());
-            // Start a thread that would call FlushAsync with different token
-            // and block on _cancellationTokenRegistration.Dispose
-            Task blockingTask = Task.Run(
-                () => {
-                    e.Set();
-                    buffer.FlushAsync(cts2.Token);
-                });
-
-            bool completed = Task.WhenAll(cancellationTask, blockingTask).Wait(TimeSpan.FromSeconds(10));
-            Assert.True(completed);
         }
 
         [Fact]
@@ -389,28 +147,96 @@ namespace Microsoft.AspNetCore.Http.Tests
         }
 
         [Fact]
-        public async Task FlushAsyncWithNewCancellationTokenNotAffectedByPrevious()
+        public async Task CancellationBetweenWritesAllDataIsPreserved()
         {
-            var cancellationTokenSource1 = new CancellationTokenSource();
-            PipeWriter buffer = Writer.WriteEmpty(10);
-            await buffer.FlushAsync(cancellationTokenSource1.Token);
+            MemoryStream = new SingleWriteStream();
+            Writer = new StreamPipeWriter(MemoryStream);
+            FlushResult flushResult = new FlushResult();
 
-            cancellationTokenSource1.Cancel();
+            var e = new ManualResetEventSlim();
 
-            var cancellationTokenSource2 = new CancellationTokenSource();
-            buffer = Writer.WriteEmpty(10);
+            var task = Task.Run(async () =>
+            {
+                try
+                {
+                    await Writer.WriteAsync(Encoding.ASCII.GetBytes("data"));
 
-            await buffer.FlushAsync(cancellationTokenSource2.Token);
+                    var writingTask = Writer.WriteAsync(Encoding.ASCII.GetBytes(" data"));
+                    e.Set();
+                    flushResult = await writingTask;
+                }
+                catch (Exception ex)
+                {
+                    Console.WriteLine(ex.Message);
+                    throw ex;
+                }
+            });
+
+            e.Wait();
+
+            Writer.CancelPendingFlush();
+
+            await task;
+
+            Assert.True(flushResult.IsCanceled);
+
+            await Writer.WriteAsync(Encoding.ASCII.GetBytes(" more data"));
+            Assert.Equal(Encoding.ASCII.GetBytes("data data more data"), Read());
         }
 
-        private byte[] Read()
+        [Fact]
+        public async Task CancellationBetweenWritesAllDataIsPreservedMultipleSegments()
         {
-            Writer.FlushAsync().GetAwaiter().GetResult();
+            MemoryStream = new SingleWriteStream();
+            Writer = new StreamPipeWriter(MemoryStream, minimumSegmentSize: 16);
+            FlushResult flushResult = new FlushResult();
+            var expectedData = Encoding.ASCII.GetBytes(new string('a', 16));
+
+            var e = new ManualResetEventSlim();
+
+            var task = Task.Run(async () =>
+            {
+                try
+                {
+                    // Create two Segments
+                    // First one will succeed to write, other one will hang.
+                    var memory = Writer.GetMemory(16);
+                    expectedData.CopyTo(memory);
+                    Writer.Advance(16);
+
+                    memory = Writer.GetMemory(16);
+                    expectedData.CopyTo(memory);
+                    Writer.Advance(16);
+
+                    var flushTask = Writer.FlushAsync();
+                    e.Set();
+                    flushResult = await flushTask;
+                }
+                catch (Exception ex)
+                {
+                    Console.WriteLine(ex.Message);
+                    throw ex;
+                }
+            });
+
+            e.Wait();
+
+            Writer.CancelPendingFlush();
+
+            await task;
+
+            Assert.True(flushResult.IsCanceled);
+
             MemoryStream.Position = 0;
             var buffer = new byte[MemoryStream.Length];
             var result = MemoryStream.Read(buffer, 0, (int)MemoryStream.Length);
-            return buffer;
+
+            Assert.Equal(expectedData, buffer);
+
+            Assert.Equal(Encoding.ASCII.GetBytes(new string('a', 32)), Read()); // Read calls Flush
         }
+
+       
 
         private async Task CheckWriteIsNotCanceled()
         {
@@ -432,41 +258,11 @@ namespace Microsoft.AspNetCore.Http.Tests
         }
     }
 
-    internal class HangingStream : Stream
+    internal class HangingStream : MemoryStream
     {
-        public override bool CanRead => throw new NotImplementedException();
 
-        public override bool CanSeek => throw new NotImplementedException();
-
-        public override bool CanWrite => true;
-
-        public override long Length => throw new NotImplementedException();
-
-        public override long Position { get => throw new NotImplementedException(); set => throw new NotImplementedException(); }
-
-        public override void Flush()
+        public HangingStream()
         {
-            throw new NotImplementedException();
-        }
-
-        public override int Read(byte[] buffer, int offset, int count)
-        {
-            throw new NotImplementedException();
-        }
-
-        public override long Seek(long offset, SeekOrigin origin)
-        {
-            throw new NotImplementedException();
-        }
-
-        public override void SetLength(long value)
-        {
-            throw new NotImplementedException();
-        }
-
-        public override void Write(byte[] buffer, int offset, int count)
-        {
-            throw new NotImplementedException();
         }
 
         public override async Task WriteAsync(byte[] buffer, int offset, int count, CancellationToken cancellationToken)
@@ -483,6 +279,49 @@ namespace Microsoft.AspNetCore.Http.Tests
         {
             await Task.Delay(30000, cancellationToken);
             return 0;
+        }
+    }
+
+    internal class SingleWriteStream : MemoryStream
+    {
+        private bool _shouldNextWriteFail;
+
+
+#if NETCOREAPP2_2
+        public override async ValueTask WriteAsync(ReadOnlyMemory<byte> source, CancellationToken cancellationToken = default)
+        {
+            try
+            {
+                if (_shouldNextWriteFail)
+                {
+                    await Task.Delay(30000, cancellationToken);
+                }
+                else
+                {
+                    await base.WriteAsync(source, cancellationToken);
+                }
+            }
+            finally
+            {
+                _shouldNextWriteFail = !_shouldNextWriteFail;
+            }
+        }
+#endif
+
+        public override async Task WriteAsync(byte[] buffer, int offset, int count, CancellationToken cancellationToken)
+        {
+            try
+            {
+                if (_shouldNextWriteFail)
+                {
+                    await Task.Delay(30000, cancellationToken);
+                }
+                await base.WriteAsync(buffer, offset, count, cancellationToken);
+            }
+            finally
+            {
+                _shouldNextWriteFail = !_shouldNextWriteFail;
+            }
         }
     }
 
