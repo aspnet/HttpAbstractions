@@ -32,13 +32,13 @@ namespace Microsoft.AspNetCore.Http
         private CancellationTokenSource _internalTokenSource;
         private bool _isCompleted;
         private ExceptionDispatchInfo _exceptionInfo;
-        private object lockObject = new object();
+        private object _lockObject = new object();
 
         private CancellationTokenSource InternalTokenSource
         {
             get
             {
-                lock (lockObject)
+                lock (_lockObject)
                 {
                     if (_internalTokenSource == null)
                     {
@@ -137,23 +137,18 @@ namespace Microsoft.AspNetCore.Http
             InternalTokenSource.Cancel();
         }
 
-        private ValueTask<FlushResult> FlushAsyncInternal(CancellationToken cancellationToken = default)
+        private async ValueTask<FlushResult> FlushAsyncInternal(CancellationToken cancellationToken = default)
         {
+            // Write all completed segments and whatever remains in the current segment
+            // and flush the result.
             CancellationTokenRegistration reg = new CancellationTokenRegistration();
             if (cancellationToken.CanBeCanceled)
             {
                 reg = cancellationToken.Register(state => ((StreamPipeWriter)state).Cancel(), this);
             }
-
-            return WriteAndFlushAsync(reg, cancellationToken);
-        }
-
-        private async ValueTask<FlushResult> WriteAndFlushAsync(CancellationTokenRegistration reg, CancellationToken token)
-        {
-            // Write all completed segments and whatever remains in the current segment
-            // and flush the result.
             using (reg)
             {
+                var localToken = InternalTokenSource.Token;
                 try
                 {
                     if (_completedSegments != null && _completedSegments.Count > 0)
@@ -163,10 +158,10 @@ namespace Microsoft.AspNetCore.Http
                         {
                             var segment = _completedSegments[0];
 #if NETCOREAPP2_2
-                            await _writingStream.WriteAsync(segment.Buffer.Slice(0, segment.Length), InternalTokenSource.Token);
+                            await _writingStream.WriteAsync(segment.Buffer.Slice(0, segment.Length), localToken);
 #elif NETSTANDARD2_0
                             MemoryMarshal.TryGetArray<byte>(segment.Buffer, out var arraySegment);
-                            await _writingStream.WriteAsync(arraySegment.Array, 0, segment.Length, InternalTokenSource.Token);
+                            await _writingStream.WriteAsync(arraySegment.Array, 0, segment.Length, localToken);
 #else
 #error Target frameworks need to be updated.
 #endif
@@ -179,10 +174,10 @@ namespace Microsoft.AspNetCore.Http
                     if (!_currentSegment.IsEmpty)
                     {
 #if NETCOREAPP2_2
-                        await _writingStream.WriteAsync(_currentSegment.Slice(0, _position), InternalTokenSource.Token);
+                        await _writingStream.WriteAsync(_currentSegment.Slice(0, _position), localToken);
 #elif NETSTANDARD2_0
                         MemoryMarshal.TryGetArray<byte>(_currentSegment, out var arraySegment);
-                        await _writingStream.WriteAsync(arraySegment.Array, 0, _position, InternalTokenSource.Token);
+                        await _writingStream.WriteAsync(arraySegment.Array, 0, _position, localToken);
 #else
 #error Target frameworks need to be updated.
 #endif
@@ -190,7 +185,7 @@ namespace Microsoft.AspNetCore.Http
                         _position = 0;
                     }
 
-                    await _writingStream.FlushAsync(InternalTokenSource.Token);
+                    await _writingStream.FlushAsync(localToken);
 
                     return new FlushResult(isCanceled: false, IsCompletedOrThrow());
                 }
@@ -198,12 +193,12 @@ namespace Microsoft.AspNetCore.Http
                 {
                     // Remove the cancellation token such that the next time Flush is called
                     // A new CTS is created.
-                    lock (lockObject)
+                    lock (_lockObject)
                     {
                         _internalTokenSource = null;
                     }
 
-                    if (token.IsCancellationRequested)
+                    if (cancellationToken.IsCancellationRequested)
                     {
                         throw;
                     }
