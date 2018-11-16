@@ -143,7 +143,7 @@ namespace Microsoft.AspNetCore.Http
             InternalTokenSource.Cancel();
         }
 
-        private async ValueTask<FlushResult> FlushAsyncInternal(CancellationToken cancellationToken = default)
+        private ValueTask<FlushResult> FlushAsyncInternal(CancellationToken cancellationToken = default)
         {
             CancellationTokenRegistration reg = new CancellationTokenRegistration();
             if (cancellationToken.CanBeCanceled)
@@ -151,11 +151,54 @@ namespace Microsoft.AspNetCore.Http
                 reg = cancellationToken.Register(state => ((StreamPipeWriter)state).Cancel(), this);
             }
 
+            return WriteAndFlushAsync(reg, cancellationToken);
+        }
+
+        private async ValueTask<FlushResult> WriteAndFlushAsync(CancellationTokenRegistration reg, CancellationToken token)
+        {
+            // Write all completed segments and whatever remains in the current segment
+            // and flush the result.
             using (reg)
             {
                 try
                 {
-                    return await WriteAndFlushAsync();
+                    if (_completedSegments != null && _completedSegments.Count > 0)
+                    {
+                        var count = _completedSegments.Count;
+                        for (var i = 0; i < count; i++)
+                        {
+                            var segment = _completedSegments[0];
+#if NETCOREAPP2_2
+                            await _writingStream.WriteAsync(segment.Buffer.Slice(0, segment.Length), InternalTokenSource.Token);
+#elif NETSTANDARD2_0
+                            MemoryMarshal.TryGetArray<byte>(segment.Buffer, out var arraySegment);
+                            await _writingStream.WriteAsync(arraySegment.Array, 0, segment.Length, InternalTokenSource.Token);
+#else
+#error Target frameworks need to be updated.
+#endif
+                            _bytesWritten -= segment.Length;
+                            segment.Return();
+                            _completedSegments.RemoveAt(0);
+                        }
+                    }
+
+                    if (!_currentSegment.IsEmpty)
+                    {
+#if NETCOREAPP2_2
+                        await _writingStream.WriteAsync(_currentSegment.Slice(0, _position), InternalTokenSource.Token);
+#elif NETSTANDARD2_0
+                        MemoryMarshal.TryGetArray<byte>(_currentSegment, out var arraySegment);
+                        await _writingStream.WriteAsync(arraySegment.Array, 0, _position, InternalTokenSource.Token);
+#else
+#error Target frameworks need to be updated.
+#endif
+                        _bytesWritten -= _position;
+                        _position = 0;
+                    }
+
+                    await _writingStream.FlushAsync(_internalTokenSource.Token);
+
+                    return new FlushResult(isCanceled: false, IsCompletedOrThrow());
                 }
                 catch (OperationCanceledException)
                 {
@@ -166,7 +209,7 @@ namespace Microsoft.AspNetCore.Http
                         _internalTokenSource = null;
                     }
 
-                    if (cancellationToken.IsCancellationRequested)
+                    if (token.IsCancellationRequested)
                     {
                         throw;
                     }
@@ -175,49 +218,6 @@ namespace Microsoft.AspNetCore.Http
                     return new FlushResult(isCanceled: true, IsCompletedOrThrow());
                 }
             }
-        }
-
-        private async ValueTask<FlushResult> WriteAndFlushAsync()
-        {
-            // Write all completed segments and whatever remains in the current segment
-            // and flush the result.
-            if (_completedSegments != null && _completedSegments.Count > 0)
-            {
-                var count = _completedSegments.Count;
-                for (var i = 0; i < count; i++)
-                {
-                    var segment = _completedSegments[0];
-#if NETCOREAPP2_2
-                    await _writingStream.WriteAsync(segment.Buffer.Slice(0, segment.Length), InternalTokenSource.Token);
-#elif NETSTANDARD2_0
-                    MemoryMarshal.TryGetArray<byte>(segment.Buffer, out var arraySegment);
-                    await _writingStream.WriteAsync(arraySegment.Array, 0, segment.Length, InternalTokenSource.Token);
-#else
-#error Target frameworks need to be updated.
-#endif
-                    _bytesWritten -= segment.Length;
-                    segment.Return();
-                    _completedSegments.RemoveAt(0);
-                }
-            }
-
-            if (!_currentSegment.IsEmpty)
-            {
-#if NETCOREAPP2_2
-                await _writingStream.WriteAsync(_currentSegment.Slice(0, _position), InternalTokenSource.Token);
-#elif NETSTANDARD2_0
-                MemoryMarshal.TryGetArray<byte>(_currentSegment, out var arraySegment);
-                await _writingStream.WriteAsync(arraySegment.Array, 0, _position, InternalTokenSource.Token);
-#else
-#error Target frameworks need to be updated.
-#endif
-                _bytesWritten -= _position;
-                _position = 0;
-            }
-
-            await _writingStream.FlushAsync(_internalTokenSource.Token);
-
-            return new FlushResult(isCanceled: false, IsCompletedOrThrow());
         }
 
         private void EnsureCapacity(int sizeHint)
