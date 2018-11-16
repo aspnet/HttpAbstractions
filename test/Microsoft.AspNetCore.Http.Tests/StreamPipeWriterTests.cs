@@ -51,9 +51,8 @@ namespace Microsoft.AspNetCore.Http.Tests
         [Fact]
         public async Task ThrowsOnCompleteAndWrite()
         {
-            PipeWriter buffer = Writer;
-            buffer.Complete(new InvalidOperationException("Whoops"));
-            var exception = await Assert.ThrowsAsync<InvalidOperationException>(async () => await buffer.FlushAsync());
+            Writer.Complete(new InvalidOperationException("Whoops"));
+            var exception = await Assert.ThrowsAsync<InvalidOperationException>(async () => await Writer.FlushAsync());
 
             Assert.Equal("Whoops", exception.Message);
         }
@@ -271,6 +270,14 @@ namespace Microsoft.AspNetCore.Http.Tests
 
             Assert.Equal(16 * 10 * 2, Read().Length);
         }
+
+        //[Fact]
+        //public async Task DisposeStreamPipeWriterAllBytesFreed()
+        //{
+        //    var writer = new StreamPipeWriter(new MemoryStream(), 16, MemoryPool<byte>.Shared);
+        //    await writer.WriteAsync(Encoding.ASCII.GetBytes("Hello world"));
+        //    writer.Dispose();
+        //}
 
         private async Task CheckWriteIsNotCanceled()
         {

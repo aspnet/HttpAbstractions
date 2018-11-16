@@ -18,7 +18,7 @@ namespace Microsoft.AspNetCore.Http.Tests
         protected PipeTest()
         {
             MemoryStream = new MemoryStream();
-            Writer = new StreamPipeWriter(MemoryStream);
+            Writer = new StreamPipeWriter(MemoryStream, 4096, new TestMemoryPool());
         }
 
         public void Dispose()

@@ -108,11 +108,28 @@ namespace Microsoft.AspNetCore.Http
         /// <inheritdoc />
         public override void Complete(Exception exception = null)
         {
+            if (_isCompleted)
+            {
+                return;
+            }
+
             _isCompleted = true;
             if (exception != null)
             {
                 _exceptionInfo = ExceptionDispatchInfo.Capture(exception);
             }
+
+            _internalTokenSource?.Dispose();
+
+            if (_completedSegments != null)
+            {
+                foreach (var segment in _completedSegments)
+                {
+                    segment.Return();
+                }
+            }
+
+            _currentSegmentOwner?.Dispose();
         }
 
         /// <inheritdoc />
@@ -272,7 +289,7 @@ namespace Microsoft.AspNetCore.Http
 
         public void Dispose()
         {
-            _internalTokenSource?.Dispose();
+            Complete();
         }
 
         /// <summary>
