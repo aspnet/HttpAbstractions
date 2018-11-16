@@ -118,13 +118,7 @@ namespace Microsoft.AspNetCore.Http
         /// <inheritdoc />
         public override void OnReaderCompleted(Action<Exception, object> callback, object state)
         {
-            if (callback == null)
-            {
-                throw new ArgumentNullException(nameof(callback));
-            }
-
-            // Note this currently doesn't do anything.
-            // Implementing completions/callbacks would require creating a PipeReaderAdapter.
+            throw new NotSupportedException("OnReaderCompleted isn't supported in StreamPipeWrapper.");
         }
 
         /// <inheritdoc />
@@ -196,7 +190,7 @@ namespace Microsoft.AspNetCore.Http
                         _position = 0;
                     }
 
-                    await _writingStream.FlushAsync(_internalTokenSource.Token);
+                    await _writingStream.FlushAsync(InternalTokenSource.Token);
 
                     return new FlushResult(isCanceled: false, IsCompletedOrThrow());
                 }
