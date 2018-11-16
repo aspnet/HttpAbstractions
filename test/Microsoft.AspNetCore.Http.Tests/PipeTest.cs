@@ -5,7 +5,6 @@ using System;
 using System.IO;
 using System.IO.Pipelines;
 
-
 namespace Microsoft.AspNetCore.Http.Tests
 {
     public abstract class PipeTest : IDisposable
@@ -22,7 +21,7 @@ namespace Microsoft.AspNetCore.Http.Tests
         {
             MemoryStream = new MemoryStream();
             Writer = new StreamPipeWriter(MemoryStream, 4096, new TestMemoryPool());
-            Reader = new StreamPipeReader(new MemoryStream()), null);
+            Reader = new StreamPipeReader(new MemoryStream(), 4096, new TestMemoryPool());
         }
 
         public void Dispose()
