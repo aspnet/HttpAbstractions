@@ -74,7 +74,7 @@ namespace Microsoft.AspNetCore.Http.Tests
         {
             var memory = Writer.GetMemory(0);
 
-            var memoryLarge = Writer.GetMemory(8000);
+            var memoryLarge = Writer.GetMemory(10000);
 
             Assert.NotEqual(memory, memoryLarge);
         }

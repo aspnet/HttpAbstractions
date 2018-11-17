@@ -31,7 +31,8 @@ namespace Microsoft.AspNetCore.Http
 
         private BufferSegment _commitHead;
         private int _commitIndex;
-        private long _length;
+        private long _consumedLength;
+        private long _examinedLength;
 
         private CancellationTokenSource InternalTokenSource
         {
@@ -81,13 +82,16 @@ namespace Microsoft.AspNetCore.Http
                 {
                     throw new InvalidOperationException("");
                 }
+                // TODO use examinedSegment/index to allow readasync to continue.
 
                 returnStart = _readHead;
                 returnEnd = consumedSegment;
 
                 var consumedBytes = new ReadOnlySequence<byte>(returnStart, _readIndex, consumedSegment, consumedIndex).Length;
-                long oldLength = _length;
-                _length -= consumedBytes;
+                _consumedLength -= consumedBytes;
+
+                var examinedBytes = new ReadOnlySequence<byte>(returnStart, _readIndex, examinedSegment, examinedIndex).Length;
+                _examinedLength -= examinedBytes;
 
                 if (consumedIndex == returnEnd.Length && _commitHead != returnEnd)
                 {
@@ -121,10 +125,22 @@ namespace Microsoft.AspNetCore.Http
 
         public override void Complete(Exception exception = null)
         {
+            if (_isCompleted)
+            {
+                return;
+            }
+
             _isCompleted = true;
             if (exception != null)
             {
                 _exceptionInfo = ExceptionDispatchInfo.Capture(exception);
+            }
+
+            var segment = _readHead;
+            while (segment != null )
+            {
+                segment.ResetMemory();
+                segment = segment.NextSegment;
             }
         }
 
@@ -135,11 +151,10 @@ namespace Microsoft.AspNetCore.Http
 
         public override async ValueTask<ReadResult> ReadAsync(CancellationToken cancellationToken = default)
         {
-            if (TryRead(out var result))
+            if (TryRead(out var readResult))
             {
-                return result;
+                return readResult;
             }
-
             try
             {
                 AllocateCommitHead();
@@ -153,7 +168,8 @@ namespace Microsoft.AspNetCore.Http
 #endif
                 _commitHead.End += length;
                 _commitIndex = _commitHead.End;
-                _length += length;
+                _consumedLength += length;
+                _examinedLength += length;
 
                 var ros = new ReadOnlySequence<byte>(_readHead, _readIndex, _commitHead, _commitIndex - _commitHead.Start);
                 return new ReadResult(ros, isCanceled: false, IsCompletedOrThrow());
@@ -232,10 +248,10 @@ namespace Microsoft.AspNetCore.Http
         {
             return new BufferSegment();
         }
-
+            
         public override bool TryRead(out ReadResult result)
         {
-            if (_length > 0) // TODO can a ReadAsync be occuring at the same time as this?
+            if (_consumedLength > 0 && _examinedLength > 0)
             {
                 var ros = new ReadOnlySequence<byte>(_readHead, _readIndex, _commitHead, _commitIndex - _commitHead.Start);
                 result = new ReadResult(ros, isCanceled: false, IsCompletedOrThrow());
@@ -272,7 +288,7 @@ namespace Microsoft.AspNetCore.Http
 
         public void Dispose()
         {
-            _internalTokenSource?.Dispose();
+            Complete();
         }
 
         private class BufferSegment : ReadOnlySequenceSegment<byte>
