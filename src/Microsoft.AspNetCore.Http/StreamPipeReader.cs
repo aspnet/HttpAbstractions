@@ -93,13 +93,18 @@ namespace Microsoft.AspNetCore.Http
                 var examinedBytes = new ReadOnlySequence<byte>(returnStart, _readIndex, examinedSegment, examinedIndex).Length;
                 _examinedLength -= examinedBytes;
 
-                if (consumedIndex == returnEnd.Length && _commitHead != returnEnd)
+                if (consumedIndex == returnEnd.Length) // _commitHead != returnEnd
                 {
                     var nextBlock = returnEnd.NextSegment;
                     if (_readHead == returnEnd)
                     {
                         _readHead = nextBlock;
                         _readIndex = 0;
+                        // This check is bad lol
+                        if (_readHead == null)
+                        {
+                            _commitHead = null;
+                        }
                     }
 
                     returnEnd = nextBlock;
@@ -137,7 +142,7 @@ namespace Microsoft.AspNetCore.Http
             }
 
             var segment = _readHead;
-            while (segment != null )
+            while (segment != null)
             {
                 segment.ResetMemory();
                 segment = segment.NextSegment;
